@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pet Calendar</title>
+
+    <!-- ===== PWA & ICON CONFIGURATION ===== -->
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#141414">
+    
+    <!-- Standard favicons for browsers -->
+    <link rel="icon" type="image/png+xml" href="./android-chrome-512x512.png" />
+    <link rel="icon" type="image/svg+xml" sizes="16x16" href="./favicon-16x16.svg" />
+    <link rel="icon" type="image/svg+xml" sizes="32x32" href="./favicon-32x32.svg" />
+
+    <!-- Apple Touch Icon for iOS devices -->
+    <link rel="apple-touch-icon" href="./apple-touch-icon.svg" />
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Pet Calendar">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React Libraries -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- Babel for JSX compilation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+</head>
+<body class="bg-[#141414]">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef } = React;
+
+        // --- Icon Components (replaces lucide-react dependency) ---
+        const CustomIcon = (props) => (
+            <svg width={props.size || 24} height={props.size || 24} viewBox="0 0 348 321" fill="currentColor" xmlns="http://www.w3.org/2000/svg" {...props}>
+                <path d="M89.6826 271.519V291.103L35.5957 320.033V296.156L63.6797 281.311L35.5957 266.465V242.589L89.6826 271.519Z"/>
+                <path d="M312.446 266.465L284.361 281.311L312.446 296.156V320.033L258.359 291.103V271.519L312.446 242.589V266.465Z"/>
+                <path d="M208.641 284.528L188.821 293.676L173.699 261.752L158.543 293.749L139.429 284.451L163.147 235.189H185.007L208.641 284.528Z"/>
+                <path fillRule="evenodd" clipRule="evenodd" d="M45.1045 121.851C41.9783 123.979 39.0014 126.485 36.1758 129.378L36.1426 129.411C33.3569 132.197 30.9005 135.284 28.7715 138.677C26.7329 142.039 25.0835 145.637 23.8252 149.479C22.6036 153.208 21.9873 157.109 21.9873 161.201V172.134C21.9873 176.226 22.6035 180.128 23.8252 183.857C25.0834 187.698 26.7329 191.296 28.7715 194.658L29.1738 195.291C31.0727 198.227 33.2223 200.928 35.624 203.398L36.1426 203.924L36.1758 203.957C39.0014 206.85 41.9783 209.356 45.1045 211.484L55.8359 218.791H25.6748L24.6152 218.009C21.3012 215.563 18.2021 212.528 15.3057 208.945C12.3965 205.347 9.85 201.349 7.6582 196.966L7.64551 196.941L7.63281 196.916C5.50727 192.513 3.81109 187.792 2.53516 182.764L2.52637 182.729L2.51855 182.696C1.30159 177.524 0.697297 172.178 0.697266 166.668C0.697266 161.158 1.30137 155.843 2.52148 150.733L2.52637 150.713L2.53223 150.692C3.80742 145.592 5.50346 140.83 7.63281 136.419L7.64551 136.395L7.6582 136.369C9.85406 131.977 12.4092 128.003 15.333 124.464C18.2134 120.906 21.2874 117.861 24.5664 115.362L25.6406 114.545H55.8359L45.1045 121.851Z"/>
+                <path fillRule="evenodd" clipRule="evenodd" d="M323.476 115.362C326.755 117.861 329.829 120.906 332.709 124.464C335.633 128.004 338.153 131.978 340.277 136.369L340.688 137.206C342.7 141.393 344.267 145.887 345.399 150.679L345.636 151.643C346.778 156.473 347.345 161.484 347.345 166.668C347.345 172.183 346.702 177.532 345.412 182.708C344.207 187.755 342.506 192.495 340.301 196.915C338.175 201.318 335.657 205.333 332.736 208.945C329.84 212.528 326.741 215.563 323.427 218.009L322.367 218.791H292.435L302.904 211.507C305.969 209.375 308.922 206.862 311.759 203.957L311.825 203.891C314.66 201.122 317.094 198.063 319.134 194.707L319.163 194.658C321.274 191.294 322.959 187.696 324.217 183.857C325.438 180.128 326.054 176.226 326.054 172.134V161.201C326.054 157.109 325.438 153.208 324.217 149.479C322.959 145.639 321.274 142.041 319.163 138.677L319.134 138.628C317.094 135.272 314.66 132.213 311.825 129.444L311.759 129.378C308.922 126.473 305.969 123.96 302.904 121.828L292.435 114.545H322.401L323.476 115.362Z"/>
+                <path fillRule="evenodd" clipRule="evenodd" d="M116.723 139.41C121.433 139.41 125.802 140.156 129.77 141.727C133.685 143.205 137.067 145.404 139.848 148.34C142.708 151.284 144.855 154.822 146.316 158.882C147.785 162.961 148.481 167.468 148.481 172.348C148.481 177.227 147.785 181.735 146.316 185.814C144.855 189.874 142.709 193.412 139.849 196.356L139.848 196.355C137.066 199.292 133.685 201.526 129.77 203.076L129.736 203.09L129.702 203.103C125.754 204.583 121.409 205.286 116.723 205.286C112.036 205.286 107.69 204.583 103.742 203.103L103.709 203.09L103.675 203.076C99.7499 201.523 96.3357 199.287 93.4893 196.356L93.4482 196.313C90.6759 193.373 88.5815 189.849 87.1289 185.814C85.6603 181.735 84.9629 177.227 84.9629 172.348C84.9629 167.468 85.6603 162.961 87.1289 158.882C88.5815 154.847 90.6759 151.323 93.4482 148.383L93.4893 148.34C96.3345 145.411 99.7493 143.209 103.675 141.727C107.643 140.156 112.012 139.41 116.723 139.41ZM116.723 159.199C114.039 159.199 112.425 159.992 111.331 161.203C110.204 162.451 109.361 164.508 109.361 167.954V176.742C109.361 180.189 110.204 182.245 111.331 183.493C112.425 184.704 114.039 185.496 116.723 185.496C119.406 185.496 121.021 184.704 122.114 183.493C123.242 182.245 124.083 180.189 124.083 176.742V167.954C124.083 164.508 123.242 162.451 122.114 161.203C121.021 159.992 119.406 159.199 116.723 159.199Z"/>
+                <path fillRule="evenodd" clipRule="evenodd" d="M171.342 175.743C175.756 175.743 179.922 176.7 182.744 179.595C185.261 182.038 186.595 185.124 186.595 188.639V192.391C186.595 195.927 185.247 199.039 182.744 201.542C179.917 204.369 175.749 205.286 171.342 205.286C166.914 205.286 162.766 204.361 159.89 201.6L159.831 201.543L159.774 201.484C157.36 198.969 156.088 195.874 156.088 192.391V188.639C156.088 185.151 157.366 182.061 159.832 179.595C162.706 176.721 166.878 175.743 171.342 175.743Z"/>
+                <path fillRule="evenodd" clipRule="evenodd" d="M225.961 139.41C230.671 139.41 235.04 140.156 239.008 141.727C242.943 143.213 246.34 145.425 249.128 148.383C251.968 151.319 254.099 154.842 255.554 158.882C257.022 162.961 257.72 167.468 257.72 172.348C257.72 177.227 257.022 181.735 255.554 185.814C254.099 189.855 251.966 193.377 249.127 196.312C246.338 199.271 242.942 201.519 239.008 203.076L238.975 203.09L238.94 203.103C234.992 204.583 230.647 205.286 225.961 205.286C221.274 205.286 216.929 204.583 212.98 203.103L212.947 203.09L212.913 203.076C208.988 201.523 205.574 199.287 202.728 196.356L202.687 196.313C199.914 193.373 197.82 189.849 196.367 185.814C194.899 181.735 194.201 177.227 194.201 172.348C194.201 167.468 194.899 162.961 196.367 158.882C197.82 154.847 199.914 151.323 202.687 148.383L202.728 148.34C205.573 145.411 208.988 143.209 212.913 141.727C216.881 140.156 221.25 139.41 225.961 139.41ZM225.961 159.199C223.277 159.199 221.663 159.992 220.569 161.203C219.442 162.451 218.6 164.508 218.6 167.954V176.742C218.6 180.189 219.442 182.245 220.569 183.493C221.663 184.704 223.277 185.496 225.961 185.496C228.645 185.496 230.259 184.704 231.353 183.493C232.48 182.245 233.321 180.189 233.321 176.742V167.954C233.321 164.508 232.48 162.451 231.353 161.203C230.259 159.992 228.645 159.199 225.961 159.199Z"/>
+                <path fillRule="evenodd" clipRule="evenodd" d="M203.744 110.578H144.298V89.6094H203.744V110.578Z"/>
+                <path d="M44.665 104.791H21.9141L59.1777 0.544922H81.9287L44.665 104.791Z"/>
+                <path d="M142.979 104.791H120.228L82.9639 0.544922H105.715L142.979 104.791Z"/>
+                <path d="M227.814 104.791H205.063L242.327 0.544922H265.078L227.814 104.791Z"/>
+                <path d="M326.128 104.791H303.377L266.113 0.544922H288.863L326.128 104.791Z"/>
+            </svg>
+        );
+        const ChevronLeft = (props) => <svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m15 18-6-6 6-6"/></svg>;
+        const ChevronRight = (props) => <svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="m9 18 6-6-6-6"/></svg>;
+        const CalendarIcon = (props) => <svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>;
+        const X = (props) => <svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>;
+        const PlusCircle = (props) => <svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/><path d="M12 8v8"/></svg>;
+        const Edit = (props) => <svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>;
+        const Trash2 = (props) => <svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>;
+        const List = (props) => <svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}><line x1="8" x2="21" y1="6" y2="6"/><line x1="8" x2="21" y1="12" y2="12"/><line x1="8" x2="21" y1="18" y2="18"/><line x1="3" x2="3.01" y1="6" y2="6"/><line x1="3" x2="3.01" y1="12" y2="12"/><line x1="3" x2="3.01" y1="18" y2="18"/></svg>;
+        const Search = (props) => <svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>;
+        const Smile = (props) => <svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" x2="9.01" y1="9" y2="9"></line><line x1="15" x2="15.01" y1="9" y2="9"></line></svg>;
+        const MoreHorizontal = (props) => <svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>;
+
+
+        // --- Helper Functions ---
+        const isSameDay = (d1, d2) => {
+            if (!d1 || !d2) return false;
+            return d1.getFullYear() === d2.getFullYear() &&
+                   d1.getMonth() === d2.getMonth() &&
+                   d1.getDate() === d2.getDate();
+        };
+
+        const getEventDetails = (summary) => {
+            const summaryLower = summary.toLowerCase();
+            let type = 'default';
+            let name = summary;
+            const serviceMappings = {
+                'walk': 'walk', 'drop-in': 'drop-in', 'house sit': 'boarding',
+                'boarding': 'boarding', 'meet & greet': 'meet-and-greet',
+            };
+            for (const keyword in serviceMappings) {
+                if (summaryLower.startsWith(keyword + ':') || summaryLower.startsWith(keyword + ' ')) {
+                    type = serviceMappings[keyword];
+                    name = summary.replace(new RegExp(`^${keyword}[:\\s]*`, 'i'), '').trim();
+                    break;
+                }
+            }
+            return { name, type };
+        };
+
+        const getColorForEventType = (type) => {
+            switch (type) {
+                case 'walk': return 'bg-[#3FADFB] text-[#3FADFB] border-[#3FADFB]/30';
+                case 'drop-in': return 'bg-[#22C46F] text-[#22C46F] border-[#22C46F]/30';
+                case 'boarding': return 'bg-[#C58FFE] text-[#C58FFE] border-[#C58FFE]/30';
+                case 'meet-and-greet': return 'bg-[#FED440] text-[#FED440] border-[#FED440]/30';
+                default: return 'bg-gray-500 text-gray-300 border-gray-500/30';
+            }
+        };
+
+        const getBarColorForEventType = (type) => {
+            switch (type) {
+                case 'walk': return 'bg-[#3FADFB]';
+                case 'drop-in': return 'bg-[#22C46F]';
+                case 'boarding': return 'bg-[#C58FFE]';
+                case 'meet-and-greet': return 'bg-[#FED440]';
+                default: return 'bg-gray-400';
+            }
+        };
+
+        const formatEventType = (type) => {
+            if (type === 'meet-and-greet') return 'Meet & Greet';
+            const words = type.replace('-', ' ').split(' ');
+            return words.map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+        };
+
+        const formatTime = (d) => d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+
+        const formatDateToYYYYMMDD = (date) => {
+            const year = date.getFullYear();
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const day = date.getDate().toString().padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
+
+        const parseDateTime = (dateString, timeString = '00:00') => {
+            const [year, month, day] = dateString.split('-').map(Number);
+            const [hours, minutes] = timeString.split(':').map(Number);
+            return new Date(year, month - 1, day, hours, minutes);
+        };
+
+        // --- React Components ---
+
+        const InsightsPage = ({ events, currentDate }) => {
+            const visualizationEvents = useMemo(() => {
+                const year = currentDate.getFullYear();
+                const startOfYear = new Date(year, 0, 1);
+                const endOfYear = new Date(year, 11, 31, 23, 59, 59, 999);
+
+                const yearEvents = events.filter(event => {
+                    const eventStart = new Date(event.dtstart);
+                    const eventEnd = new Date(event.dtend);
+                    return eventStart <= endOfYear && eventEnd >= startOfYear;
+                });
+
+                const expandedEvents = [];
+                yearEvents.forEach(event => {
+                    let currentDay = new Date(event.dtstart);
+                    let eventEndDay = new Date(event.dtend);
+
+                    if (!isSameDay(new Date(event.dtstart), new Date(event.dtend)) && eventEndDay.getHours() === 0 && eventEndDay.getMinutes() === 0) {
+                        eventEndDay.setDate(eventEndDay.getDate() - 1);
+                    }
+
+                    let loopStartDate = currentDay > startOfYear ? currentDay : startOfYear;
+                    let loopEndDate = eventEndDay < endOfYear ? eventEndDay : endOfYear;
+                    
+                    loopStartDate = new Date(loopStartDate);
+                    loopStartDate.setHours(0, 0, 0, 0);
+
+                    while (loopStartDate <= loopEndDate) {
+                        expandedEvents.push({
+                            uid: `${event.uid}-${loopStartDate.toISOString()}`,
+                            type: event.type,
+                            summary: event.summary
+                        });
+                        loopStartDate.setDate(loopStartDate.getDate() + 1);
+                    }
+                });
+                
+                return expandedEvents.sort((a, b) => new Date(a.uid.split('_').pop()) - new Date(b.uid.split('_').pop()));
+
+            }, [events, currentDate]);
+
+            const serviceTypes = [
+                { type: 'walk', label: 'Walk' },
+                { type: 'drop-in', label: 'Drop-in' },
+                { type: 'boarding', label: 'Boarding' },
+                { type: 'meet-and-greet', label: 'Meet & Greet' },
+            ];
+
+            return (
+                <div className="p-4 h-full text-white flex flex-col flex-grow">
+                     <p className="text-left text-gray-400 mb-6">
+                         {visualizationEvents.length} total service days scheduled this year.
+                     </p>
+                     <div className="flex-grow rounded-lg overflow-y-auto">
+                         {visualizationEvents.length > 0 ? (
+                             <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(15, minmax(0, 1fr))' }}>
+                                 {visualizationEvents.map((event) => (
+                                     <div
+                                         key={event.uid}
+                                         className={`w-4 h-4 rounded-full mx-auto ${getBarColorForEventType(event.type)}`}
+                                         title={`${formatEventType(event.type)}: ${event.summary}`}
+                                     ></div>
+                                 ))}
+                             </div>
+                         ) : (
+                             <div className="flex items-center justify-center h-full">
+                                 <p className="text-gray-500">No scheduled activity for this year.</p>
+                             </div>
+                         )}
+                     </div>
+                     <div className="mt-6 rounded-lg">
+                         <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+                             {serviceTypes.map(service => (
+                                 <div key={service.type} className="flex items-center gap-2">
+                                     <div className={`w-4 h-4 rounded-full ${getBarColorForEventType(service.type)} opacity-70`}></div>
+                                     <span className="text-sm text-gray-300">{service.label}</span>
+                                 </div>
+                             ))}
+                         </div>
+                     </div>
+                </div>
+            );
+        };
+
+
+        const CalendarHeader = ({ currentDate, setCurrentDate, view, onTodayClick, setView }) => {
+            const monthName = currentDate.toLocaleString('default', { month: 'long' });
+            const year = currentDate.getFullYear();
+            const prevMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+            const nextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+
+            const getTitle = () => {
+                if (view === 'list') return 'List View';
+                if (view === 'search') return 'Search';
+                if (view === 'insights') return 'Insights';
+                if (view === 'settings') return 'Settings';
+                return `${monthName} ${year}`;
+            };
+            
+            const handleIconClick = () => {
+                if (view !== 'calendar') {
+                    setView('calendar');
+                }
+            };
+
+            return (
+                <div className="p-4 bg-[#141414]">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 flex-1">
+                            <button onClick={handleIconClick} disabled={view === 'calendar'} className={view !== 'calendar' ? 'cursor-pointer' : ''}>
+                                <CustomIcon className="w-7 h-7 text-gray-400" />
+                            </button>
+                            <h1 className="text-xl font-bold text-gray-50">{getTitle()}</h1>
+                        </div>
+                        <div className="flex items-center justify-end gap-1" style={{minWidth: '100px'}}>
+                            {view === 'calendar' && <button onClick={prevMonth} className="p-2 rounded-full hover:bg-white/10 transition-colors"><ChevronLeft className="w-5 h-5 text-gray-300" /></button>}
+                            {(view === 'calendar' || view === 'list') && <button onClick={onTodayClick} className="px-3 py-1 text-sm font-semibold text-gray-200 border border-white/20 rounded-full hover:bg-white/10 transition-colors">Today</button>}
+                            {view === 'calendar' && <button onClick={nextMonth} className="p-2 rounded-full hover:bg-white/10 transition-colors"><ChevronRight className="w-5 h-5 text-gray-300" /></button>}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const CalendarGrid = ({ currentDate, events, onDayClick }) => {
+            const today = new Date();
+            const daysOfWeek = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+            const calendarDays = useMemo(() => {
+                const year = currentDate.getFullYear();
+                const month = currentDate.getMonth();
+                const firstDayOfMonth = new Date(year, month, 1);
+                const lastDayOfMonth = new Date(year, month + 1, 0);
+                const startDate = new Date(firstDayOfMonth);
+                startDate.setDate(startDate.getDate() - firstDayOfMonth.getDay());
+                const endDate = new Date(lastDayOfMonth);
+                endDate.setDate(endDate.getDate() + (6 - lastDayOfMonth.getDay()));
+                let days = [];
+                let day = new Date(startDate);
+                while (day <= endDate) {
+                    days.push({ date: new Date(day), isCurrentMonth: day.getMonth() === month });
+                    day.setDate(day.getDate() + 1);
+                }
+                return days;
+            }, [currentDate]);
+
+            return (
+                <div className="flex flex-col flex-grow">
+                    <div className="grid grid-cols-7 flex-shrink-0">
+                        {daysOfWeek.map((day, index) => <div key={`${day}-${index}`} className="py-2 text-center font-semibold text-xs text-gray-400 border-b border-white/10">{day}</div>)}
+                    </div>
+                    <div className="grid grid-cols-7 flex-grow" style={{gridTemplateRows: `repeat(${calendarDays.length / 7}, minmax(0, 1fr))`}}>
+                        {calendarDays.map(({ date, isCurrentMonth }, index) => {
+                            const isToday = isSameDay(date, today);
+                            const dayEvents = events.filter(event => {
+                                const eventStart = new Date(event.dtstart); eventStart.setHours(0, 0, 0, 0);
+                                const eventEnd = new Date(event.dtend);
+                                if (!isSameDay(new Date(event.dtstart), new Date(event.dtend)) && eventEnd.getHours() === 0 && eventEnd.getMinutes() === 0) {
+                                        eventEnd.setDate(eventEnd.getDate() - 1);
+                                }
+                                eventEnd.setHours(23, 59, 59, 999);
+                                return date >= eventStart && date <= eventEnd;
+                            }).sort((a, b) => {
+                                const isABoarding = a.type === 'boarding';
+                                const isBBoarding = b.type === 'boarding';
+                                if (isABoarding && !isBBoarding) return -1;
+                                if (!isABoarding && isBBoarding) return 1;
+                                return new Date(a.dtstart) - new Date(b.dtstart);
+                            });
+
+                            return (
+                                <div key={date.toISOString()} className={`p-1 border-b border-white/10 flex flex-col transition-colors cursor-pointer hover:bg-white/10 ${!isCurrentMonth ? 'bg-black/40' : ''} ${ (index + 1) % 7 === 0 ? '' : 'border-r-0' }`} onClick={() => onDayClick(date)}>
+                                    <span className={`text-xs font-semibold self-center ${isCurrentMonth ? 'text-gray-100' : 'text-gray-500'} ${isToday ? 'bg-white/10 text-white rounded-full w-6 h-6 flex items-center justify-center' : 'w-6 h-6 flex items-center justify-center'}`}>{date.getDate()}</span>
+                                    <div className="mt-1 flex-grow overflow-hidden text-[10px] space-y-1">
+                                        {dayEvents.slice(0, 4).map((event) => (
+                                            <div key={event.uid} className={`py-px px-1 rounded-md truncate ${getBarColorForEventType(event.type)} text-[#141414] font-medium ${!isCurrentMonth ? 'opacity-40' : ''}`}>{event.summary}</div>
+                                        ))}
+                                        {dayEvents.length > 4 && <div className="text-gray-400 font-semibold">+ {dayEvents.length - 4} more</div>}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            );
+        };
+
+        const EventModal = ({ isOpen, onClose, date, events, onEdit, onDelete, onDeleteSeries }) => {
+            const [confirmingDelete, setConfirmingDelete] = useState(null);
+            if (!isOpen || !date) return null;
+            const formatDate = (d) => d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+            const formatShortDate = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const handleEdit = (event) => { onEdit(event); onClose(); }
+            const handleDeleteClick = (event) => {
+                if (event.isRecurring) { setConfirmingDelete(event); } 
+                else { onDelete(event.uid); onClose(); }
+            };
+            const confirmSeriesDelete = () => { onDeleteSeries(confirmingDelete.seriesId); setConfirmingDelete(null); onClose(); };
+            const confirmSingleDelete = () => { onDelete(confirmingDelete.uid); setConfirmingDelete(null); onClose(); };
+            
+            const parseYYYYMMDDString = (dateString) => {
+                const [year, month, day] = dateString.split('-').map(Number);
+                return new Date(year, month - 1, day);
+            };
+
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+                    <div className="bg-[#1F1F1F] rounded-2xl shadow-xl w-full max-w-sm max-h-[80vh] flex flex-col">
+                        <div className="p-4 border-b border-white/10 flex justify-between items-center">
+                            <h2 className="text-lg font-bold text-gray-100">{formatDate(date)}</h2>
+                            <button onClick={onClose} className="p-1 rounded-full hover:bg-white/10"><X className="w-5 h-5 text-gray-400" /></button>
+                        </div>
+                        <div className="p-4 flex-grow overflow-y-auto">
+                            {events.length > 0 ? (
+                                <ul className="space-y-4">
+                                    {events.map((event) => {
+                                        const colorClass = getColorForEventType(event.type);
+                                        const textColor = colorClass.split(' ')[1];
+                                        const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                                        const recurringDayNames = event.isRecurring && event.recurringDays ? Object.keys(event.recurringDays).filter(day => event.recurringDays[day]).map(dayIndex => dayLabels[dayIndex]).join(', ') : '';
+                                        const hasSelectedDays = recurringDayNames && recurringDayNames.length > 0;
+
+                                        return (
+                                        <li key={event.uid} className={`p-3 bg-white/5 rounded-xl border ${colorClass.split(' ')[2]}`}>
+                                            <div className="flex justify-between items-start">
+                                                <h3 className={`font-semibold ${textColor}`}>{event.summary}</h3>
+                                                <span className="text-xs text-gray-400">{formatEventType(event.type)}</span>
+                                            </div>
+                                            {event.type === 'boarding' && !isSameDay(new Date(event.dtstart), new Date(event.dtend)) ? (
+                                                <div className="text-sm text-gray-300 mt-2 space-y-1">
+                                                    <p>{formatShortDate(new Date(event.dtstart))} to {formatShortDate(new Date(event.dtend))}</p>
+                                                    <p>Drop-off: {formatTime(new Date(event.dtstart))} &nbsp;|&nbsp; Pick-up: {formatTime(new Date(event.dtend))}</p>
+                                                </div>
+                                            ) : (
+                                                <p className="text-sm text-gray-300 mt-1">{formatTime(new Date(event.dtstart))} - {formatTime(new Date(event.dtend))}</p>
+                                            )}
+                                            {event.isRecurring && (
+                                                <p className="text-xs text-gray-400 mt-1">
+                                                    {hasSelectedDays
+                                                        ? `Every ${recurringDayNames}`
+                                                        : event.seriesStartDate && event.recurUntil
+                                                            ? `${formatShortDate(parseYYYYMMDDString(event.seriesStartDate))} to ${formatShortDate(parseYYYYMMDDString(event.recurUntil))}`
+                                                            : 'Recurring Event'
+                                                    }
+                                                </p>
+                                            )}
+                                            {event.description && <p className="text-xs text-gray-400 mt-2 whitespace-pre-wrap">{event.description}</p>}
+                                            <div className="flex gap-2 mt-3">
+                                                <button onClick={() => handleEdit(event)} className="flex-1 text-xs bg-white/10 hover:bg-white/20 text-gray-200 py-1 rounded-full flex items-center justify-center gap-1"><Edit size={12}/> Edit</button>
+                                                <button onClick={() => handleDeleteClick(event)} className="flex-1 text-xs bg-red-500/20 hover:bg-red-500/30 text-red-200 py-1 rounded-full flex items-center justify-center gap-1"><Trash2 size={12}/> Remove</button>
+                                            </div>
+                                        </li>
+                                    )})}
+                                </ul>
+                            ) : <p className="text-center text-gray-500 py-8">No events scheduled.</p>}
+                        </div>
+                    </div>
+                    {confirmingDelete && (
+                        <div className="absolute inset-0 bg-black bg-opacity-80 flex items-center justify-center p-4">
+                            <div className="bg-[#2a2a2a] p-4 rounded-2xl text-center">
+                                <p className="text-gray-200 mb-4">This is a recurring event. Do you want to remove only this one, or the entire series?</p>
+                                <div className="flex flex-col gap-2">
+                                    <button onClick={confirmSingleDelete} className="w-full px-4 py-2 text-sm bg-red-600 hover:bg-red-500 text-white rounded-full">Remove just this event</button>
+                                    <button onClick={confirmSeriesDelete} className="w-full px-4 py-2 text-sm bg-red-700 hover:bg-red-600 text-white rounded-full">Remove all in series</button>
+                                    <button onClick={() => setConfirmingDelete(null)} className="w-full px-4 py-2 text-sm bg-white/10 hover:bg-white/20 text-white rounded-full mt-2">Cancel</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const AddEventForm = ({ isOpen, onAddEvents, eventToEdit, onUpdateEvent, onUpdateSeries, onCancelEdit }) => {
+            const [name, setName] = useState('');
+            const [type, setType] = useState('walk');
+            const [date, setDate] = useState(formatDateToYYYYMMDD(new Date()));
+            const [time, setTime] = useState('09:00');
+            const [duration, setDuration] = useState(30);
+            const [description, setDescription] = useState(''); // State for optional notes
+            const [isRecurring, setIsRecurring] = useState(false);
+            const [recurringDays, setRecurringDays] = useState({ 0: false, 1: false, 2: false, 3: false, 4: false, 5: false, 6: false });
+            const [recurUntil, setRecurUntil] = useState(formatDateToYYYYMMDD(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)));
+            const [startDate, setStartDate] = useState(formatDateToYYYYMMDD(new Date()));
+            const [endDate, setEndDate] = useState(formatDateToYYYYMMDD(new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)));
+            const [dropOffTime, setDropOffTime] = useState('09:00');
+            const [pickUpTime, setPickUpTime] = useState('17:00');
+            const [updateScope, setUpdateScope] = useState('single');
+            const isEditMode = !!eventToEdit;
+
+            useEffect(() => {
+                if (eventToEdit) {
+                    setName(eventToEdit.summary);
+                    setType(eventToEdit.type);
+                    setDescription(eventToEdit.description || '');
+                    const start = new Date(eventToEdit.dtstart);
+                    const end = new Date(eventToEdit.dtend);
+                    
+                    if (eventToEdit.type === 'boarding') {
+                        setStartDate(formatDateToYYYYMMDD(start));
+                        setDropOffTime(`${start.getHours().toString().padStart(2, '0')}:${start.getMinutes().toString().padStart(2, '0')}`);
+                        setEndDate(formatDateToYYYYMMDD(end));
+                        setPickUpTime(`${end.getHours().toString().padStart(2, '0')}:${end.getMinutes().toString().padStart(2, '0')}`);
+                    } else {
+                        if (eventToEdit.isRecurring && eventToEdit.seriesStartDate) {
+                            setDate(eventToEdit.seriesStartDate);
+                        } else {
+                            setDate(formatDateToYYYYMMDD(start));
+                        }
+                        setTime(`${start.getHours().toString().padStart(2, '0')}:${start.getMinutes().toString().padStart(2, '0')}`);
+                        const durationMinutes = (end - start) / 60000;
+                        setDuration(durationMinutes);
+                    }
+
+                    setIsRecurring(eventToEdit.isRecurring || false);
+                    setRecurringDays(eventToEdit.recurringDays || { 0: false, 1: false, 2: false, 3: false, 4: false, 5: false, 6: false });
+                    
+                    if (eventToEdit.isRecurring && eventToEdit.recurUntil) {
+                        setRecurUntil(eventToEdit.recurUntil);
+                    } else {
+                        const defaultRecurDate = new Date();
+                        defaultRecurDate.setDate(defaultRecurDate.getDate() + 7);
+                        setRecurUntil(formatDateToYYYYMMDD(defaultRecurDate));
+                    }
+
+                } else { 
+                    resetForm(); 
+                }
+            }, [eventToEdit]);
+
+            const timeOptions = useMemo(() => {
+                const options = [];
+                for (let h = 0; h < 24; h++) {
+                    options.push(`${h.toString().padStart(2, '0')}:00`);
+                    options.push(`${h.toString().padStart(2, '0')}:30`);
+                }
+                return options;
+            }, []);
+
+            const handleRecurringDayToggle = (dayIndex) => setRecurringDays(prev => ({ ...prev, [dayIndex]: !prev[dayIndex] }));
+            const resetForm = () => { setName(''); setDescription(''); setIsRecurring(false); setRecurringDays({ 0: false, 1: false, 2: false, 3: false, 4: false, 5: false, 6: false }); onCancelEdit(); }
+
+            const handleSubmit = (e) => {
+                e.preventDefault(); if (!name) return;
+                if (isEditMode) {
+                    if (eventToEdit.isRecurring && updateScope === 'series') {
+                        const updatedSeriesData = { name, time, duration, recurringDays, recurUntil, description };
+                        onUpdateSeries(eventToEdit, { ...updatedSeriesData, type: eventToEdit.type });
+                    } else {
+                        let updatedEvent = { ...eventToEdit, summary: name, type, description };
+                        if (type === 'boarding') {
+                            updatedEvent.dtstart = parseDateTime(startDate, dropOffTime).toISOString();
+                            updatedEvent.dtend = parseDateTime(endDate, pickUpTime).toISOString();
+                        } else {
+                            const eventStart = parseDateTime(date, time);
+                            const finalDuration = type === 'meet-and-greet' ? 30 : duration;
+                            const eventEnd = new Date(eventStart.getTime() + finalDuration * 60000);
+                            updatedEvent.dtstart = eventStart.toISOString();
+                            updatedEvent.dtend = eventEnd.toISOString();
+                            updatedEvent.isRecurring = false; delete updatedEvent.seriesId; delete updatedEvent.recurringDays;
+                        }
+                        onUpdateEvent(updatedEvent);
+                    }
+                    return;
+                }
+                let newEvents = [];
+                if (type === 'boarding') {
+                    const start = parseDateTime(startDate, dropOffTime);
+                    const end = parseDateTime(endDate, pickUpTime);
+                    newEvents.push({ summary: name, dtstart: start.toISOString(), dtend: end.toISOString(), type, description, uid: `manual-${crypto.randomUUID()}` });
+                } else if (isRecurring && (type === 'walk' || type === 'drop-in')) {
+                    let selectedDays = Object.keys(recurringDays).filter(day => recurringDays[day]).map(Number);
+                    const hasSelectedDays = selectedDays.length > 0;
+                    if (!hasSelectedDays) {
+                        selectedDays = [0, 1, 2, 3, 4, 5, 6]; // Default to daily
+                    }
+                    const seriesStartDate = date;
+                    let currentDate = parseDateTime(date);
+                    const untilDate = parseDateTime(recurUntil, '23:59');
+                    const seriesId = `manual-series-${crypto.randomUUID()}`;
+                    while (currentDate <= untilDate) {
+                        if (selectedDays.includes(currentDate.getDay())) {
+                            const eventStart = parseDateTime(formatDateToYYYYMMDD(currentDate), time);
+                            const eventEnd = new Date(eventStart.getTime() + duration * 60000);
+                            newEvents.push({ summary: name, dtstart: eventStart.toISOString(), dtend: eventEnd.toISOString(), type, description, uid: `manual-${crypto.randomUUID()}`, isRecurring: true, recurringDays: hasSelectedDays ? recurringDays : null, seriesId, recurUntil, seriesStartDate });
+                        }
+                        currentDate.setDate(currentDate.getDate() + 1);
+                    }
+                } else {
+                    const eventStart = parseDateTime(date, time);
+                    const finalDuration = type === 'meet-and-greet' ? 30 : duration;
+                    const eventEnd = new Date(eventStart.getTime() + finalDuration * 60000);
+                    newEvents.push({ summary: name, dtstart: eventStart.toISOString(), dtend: eventEnd.toISOString(), type, description, uid: `manual-${crypto.randomUUID()}` });
+                }
+                if (newEvents.length > 0) { onAddEvents(newEvents); resetForm(); }
+            };
+
+            const dayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+            const inputClasses = "w-full px-4 py-2 text-sm bg-white/5 border border-white/10 text-white rounded-full focus:outline-none focus:ring-2 focus:ring-white/20";
+            const textareaClasses = "w-full px-4 py-2 text-sm bg-white/5 border border-white/10 text-white rounded-2xl focus:outline-none focus:ring-2 focus:ring-white/20";
+            const dateInputClasses = `${inputClasses} dark-date-input`;
+            const selectClasses = `${inputClasses} custom-select`;
+
+            if (!isOpen) return null;
+
+            return (
+                <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+                    <div className="bg-[#1F1F1F] rounded-2xl shadow-xl w-full max-w-sm max-h-[90vh] flex flex-col">
+                        <div className="p-4 border-b border-white/10 flex justify-between items-center">
+                            <h3 className="text-lg font-semibold text-gray-100 flex items-center gap-2"><PlusCircle className="w-6 h-6 text-gray-400" />{isEditMode ? 'Edit Event' : 'Add Event'}</h3>
+                            <button onClick={onCancelEdit} className="p-1 rounded-full hover:bg-white/10"><X className="w-5 h-5 text-gray-400" /></button>
+                        </div>
+                        <div className="p-4 overflow-y-auto">
+                            <style>{`
+                                .dark-date-input { color-scheme: dark; } 
+                                .dark-date-input::-webkit-calendar-picker-indicator { filter: invert(1); } 
+                                .custom-select { 
+                                    -webkit-appearance: none; 
+                                    -moz-appearance: none; 
+                                    appearance: none; 
+                                    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%239ca3af'%3E%3Cpath fill-rule='evenodd' d='M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z' clip-rule='evenodd' /%3E%3C/svg%3E"); 
+                                    background-repeat: no-repeat; 
+                                    background-position: right 0.5rem center; 
+                                    background-size: 1.5em 1.5em;
+                                }
+                                .custom-select {
+                                    background-color: rgba(255, 255, 255, 0.05);
+                                }
+                                select option {
+                                    background: #1F1F1F; /* Match modal background color for a dark theme */
+                                    color: white;
+                                }
+                            `}</style>
+                            <form onSubmit={handleSubmit} className="space-y-4">
+                                <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Pet's Name" className={inputClasses} required />
+                                <div>
+                                    <label className="text-xs text-gray-400 block mb-1 px-4">Service Type</label>
+                                    <select value={type} onChange={e => setType(e.target.value)} className={selectClasses} disabled={isEditMode && eventToEdit.isRecurring && updateScope === 'series'}>
+                                        <option value="walk">Walk</option><option value="drop-in">Drop-in</option>
+                                        <option value="boarding">Boarding</option><option value="meet-and-greet">Meet & Greet</option>
+                                    </select>
+                                </div>
+                                {isEditMode && eventToEdit.isRecurring && (
+                                    <div className="text-sm text-gray-400 p-3 bg-black/30 rounded-2xl space-y-2">
+                                        <p className="font-semibold text-center">Edit Recurring Event</p>
+                                        <div className="flex justify-around">
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input type="radio" name="updateScope" value="single" checked={updateScope === 'single'} onChange={() => setUpdateScope('single')} className="hidden" />
+                                                <div className={`w-5 h-5 border-2 ${updateScope === 'single' ? 'border-gray-400' : 'border-gray-500'} rounded-full flex items-center justify-center`}>{updateScope === 'single' && <div className="w-2.5 h-2.5 bg-gray-400 rounded-full"></div>}</div>
+                                                This event only
+                                            </label>
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input type="radio" name="updateScope" value="series" checked={updateScope === 'series'} onChange={() => setUpdateScope('series')} className="hidden" />
+                                                <div className={`w-5 h-5 border-2 ${updateScope === 'series' ? 'border-gray-400' : 'border-gray-500'} rounded-full flex items-center justify-center`}>{updateScope === 'series' && <div className="w-2.5 h-2.5 bg-gray-400 rounded-full"></div>}</div>
+                                                Entire series
+                                            </label>
+                                        </div>
+                                    </div>
+                                )}
+                                {type === 'boarding' ? (
+                                    <div className="space-y-3 p-3 bg-black/30 rounded-2xl">
+                                        <div className="flex gap-2">
+                                            <div className="flex-1"><label className="text-xs text-gray-400 block mb-1 px-4">Start Date</label><input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className={dateInputClasses} required /></div>
+                                            <div className="flex-1"><label className="text-xs text-gray-400 block mb-1 px-4">Drop-off</label><select value={dropOffTime} onChange={e => setDropOffTime(e.target.value)} className={selectClasses}>{timeOptions.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <div className="flex-1"><label className="text-xs text-gray-400 block mb-1 px-4">End Date</label><input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className={dateInputClasses} required /></div>
+                                            <div className="flex-1"><label className="text-xs text-gray-400 block mb-1 px-4">Pick-up</label><select value={pickUpTime} onChange={e => setPickUpTime(e.target.value)} className={selectClasses}>{timeOptions.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3 p-3 bg-black/30 rounded-2xl">
+                                        <div className="flex gap-2">
+                                            <div className="flex-1"><label className="text-xs text-gray-400 block mb-1 px-4">Date</label><input type="date" value={date} onChange={e => setDate(e.target.value)} className={dateInputClasses} required /></div>
+                                            <div className="flex-1"><label className="text-xs text-gray-400 block mb-1 px-4">Time</label><select value={time} onChange={e => setTime(e.target.value)} className={selectClasses}>{timeOptions.map(t => <option key={t} value={t}>{t}</option>)}</select></div>
+                                        </div>
+                                        {type !== 'meet-and-greet' && (<div><label className="text-xs text-gray-400 block mb-1 px-4">Duration</label><select value={duration} onChange={e => setDuration(Number(e.target.value))} className={selectClasses}><option value={30}>30 minutes</option><option value={60}>1 hour</option></select></div>)}
+                                        {((type === 'walk' || type === 'drop-in') && (!isEditMode || (isEditMode && updateScope === 'series'))) && <div className="flex items-center gap-2 px-4"><label htmlFor="is-recurring" className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer"><div className="w-5 h-5 border-2 border-gray-500 rounded-full flex items-center justify-center">{isRecurring && <div className="w-2.5 h-2.5 bg-gray-400 rounded-full"></div>}</div>Recurring Event</label><input type="checkbox" id="is-recurring" checked={isRecurring} onChange={e => setIsRecurring(e.target.checked)} className="hidden" disabled={isEditMode && updateScope === 'single'}/></div>}
+                                        {((isRecurring && (type === 'walk' || type === 'drop-in')) && (!isEditMode || (isEditMode && updateScope === 'series'))) && (
+                                            <div className="space-y-2">
+                                                <div><label className="text-xs text-gray-400 block mb-1 px-4">Repeat on</label><div className="flex justify-between gap-1">{dayLabels.map((label, index) => <button type="button" key={index} onClick={() => handleRecurringDayToggle(index)} className={`w-8 h-8 rounded-full text-xs font-bold transition-colors ${recurringDays[index] ? 'bg-white/20 text-white' : 'bg-white/5 hover:bg-white/10 text-gray-200'}`}>{label}</button>)}</div></div>
+                                                <div><label className="text-xs text-gray-400 block mb-1 px-4">Recur Until</label><input type="date" value={recurUntil} onChange={e => setRecurUntil(e.target.value)} className={dateInputClasses} required /></div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                                <textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Optional Notes..." className={textareaClasses} rows="3"></textarea>
+                                <div className="flex gap-2 pt-2">
+                                    {isEditMode && <button type="button" onClick={onCancelEdit} className="w-full px-4 py-2 font-semibold text-white bg-white/10 rounded-full hover:bg-white/20 transition-colors">Cancel</button>}
+                                    <button type="submit" className="w-full px-4 py-2 font-semibold text-black bg-gray-200 rounded-full hover:bg-white transition-colors">{isEditMode ? 'Update Event' : 'Add Event'}</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [currentDate, setCurrentDate] = useState(new Date(2025, 6, 1)); // Start view in July 2025
+            const [events, setEvents] = useState([]);
+            const [isLoading, setIsLoading] = useState(true);
+            const [error, setError] = useState(null);
+            const [selectedDay, setSelectedDay] = useState({ date: null });
+            const [isDayModalOpen, setIsDayModalOpen] = useState(false);
+            const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+            const [editingEvent, setEditingEvent] = useState(null);
+            const [view, setView] = useState('calendar'); // 'calendar', 'list', 'search', 'insights', 'settings'
+            const [searchQuery, setSearchQuery] = useState('');
+            const [selectedService, setSelectedService] = useState(null);
+            const contentRef = useRef(null);
+            const todayDateString = new Date().toDateString();
+            
+            // The base URL for your Netlify Functions
+            const API_ENDPOINT = '/.netlify/functions/events';
+            // A simple check to see if we're in a local/preview environment vs deployed on Netlify
+            const isLocalOrPreview = !window.location.hostname || window.location.hostname === 'localhost';
+
+            // Function to fetch all events from the backend
+            const fetchEvents = async () => {
+                setIsLoading(true);
+                setError(null);
+
+                // If in a local preview, use mock data to avoid fetch errors
+                if (isLocalOrPreview) {
+                    console.log("Running in local/preview mode. Using mock data.");
+                    const year = 2025;
+                    const may = 4;
+                    const july = 6;
+                    const august = 7;
+                    const mockData = [
+                        // May Events
+                        { uid: 'mock-1', summary: "Milo", dtstart: new Date(year, may, 5, 10, 0, 0), dtend: new Date(year, may, 5, 10, 30, 0), type: 'walk' },
+                        { uid: 'mock-2', summary: "Daisy", dtstart: new Date(year, may, 10, 12, 0, 0), dtend: new Date(year, may, 10, 12, 30, 0), type: 'drop-in' },
+                        { uid: 'mock-3', summary: "Rocky", dtstart: new Date(year, may, 15, 9, 0, 0), dtend: new Date(year, may, 18, 17, 0, 0), type: 'boarding' },
+                        { uid: 'mock-4', summary: "Bella", dtstart: new Date(year, may, 20, 16, 0, 0), dtend: new Date(year, may, 20, 17, 0, 0), type: 'walk' },
+                        { uid: 'mock-5', summary: "Charlie", dtstart: new Date(year, may, 25, 11, 0, 0), dtend: new Date(year, may, 25, 11, 30, 0), type: 'meet-and-greet' },
+                        { uid: 'mock-6', summary: "Lucy", dtstart: new Date(year, may, 30, 14, 0, 0), dtend: new Date(year, may, 30, 14, 30, 0), type: 'drop-in' },
+
+                        // July Events
+                        { uid: 'mock-7', summary: "Max", dtstart: new Date(year, july, 1, 8, 0, 0), dtend: new Date(year, july, 1, 8, 30, 0), type: 'walk' },
+                        { uid: 'mock-8', summary: "Buddy", dtstart: new Date(year, july, 5, 13, 0, 0), dtend: new Date(year, july, 5, 13, 30, 0), type: 'drop-in' },
+                        { uid: 'mock-9', summary: "Sadie", dtstart: new Date(year, july, 10, 18, 0, 0), dtend: new Date(year, july, 15, 10, 0, 0), type: 'boarding' },
+                        { uid: 'mock-10', summary: "Cooper", dtstart: new Date(year, july, 18, 9, 30, 0), dtend: new Date(year, july, 18, 10, 0, 0), type: 'walk' },
+                        { uid: 'mock-11', summary: "Zoe", dtstart: new Date(year, july, 22, 17, 0, 0), dtend: new Date(year, july, 22, 17, 30, 0), type: 'meet-and-greet' },
+                        { uid: 'mock-12', summary: "Toby", dtstart: new Date(year, july, 28, 11, 30, 0), dtend: new Date(year, july, 28, 12, 0, 0), type: 'drop-in' },
+                        { uid: 'mock-13', summary: "Molly", dtstart: new Date(year, july, 30, 7, 0, 0), dtend: new Date(year, july, 30, 8, 0, 0), type: 'walk' },
+                        { uid: 'mock-14', summary: "Lucy", dtstart: new Date(year, july, 2, 9, 0, 0), dtend: new Date(year, july, 2, 9, 30, 0), type: 'walk' },
+                        { uid: 'mock-15', summary: "Luna", dtstart: new Date(year, july, 26, 9, 0, 0), dtend: new Date(year, july, 28, 17, 0, 0), type: 'boarding' },
+
+                        // August Events
+                        { uid: 'mock-16', summary: "Oscar", dtstart: new Date(year, august, 2, 15, 0, 0), dtend: new Date(year, august, 2, 15, 30, 0), type: 'walk' },
+                        { uid: 'mock-17', summary: "Ruby", dtstart: new Date(year, august, 6, 10, 0, 0), dtend: new Date(year, august, 6, 10, 30, 0), type: 'drop-in' },
+                        { uid: 'mock-18', summary: "Leo", dtstart: new Date(year, august, 12, 8, 0, 0), dtend: new Date(year, august, 16, 19, 0, 0), type: 'boarding' },
+                        { uid: 'mock-19', summary: "Jack", dtstart: new Date(year, august, 19, 16, 30, 0), dtend: new Date(year, august, 19, 17, 0, 0), type: 'walk' },
+                        { uid: 'mock-20', summary: "Penny", dtstart: new Date(year, august, 23, 18, 0, 0), dtend: new Date(year, august, 23, 18, 30, 0), type: 'meet-and-greet' },
+                        { uid: 'mock-21', summary: "Gus", dtstart: new Date(year, august, 27, 9, 0, 0), dtend: new Date(year, august, 27, 9, 30, 0), type: 'drop-in' },
+                        { uid: 'mock-22', summary: "Nala", dtstart: new Date(year, august, 31, 12, 0, 0), dtend: new Date(year, august, 31, 13, 0, 0), type: 'walk' },
+                    ];
+                    setEvents(mockData);
+                    setIsLoading(false);
+                    return;
+                }
+
+                try {
+                    const response = await fetch(API_ENDPOINT);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    const data = await response.json();
+                    // Convert date strings from backend into Date objects
+                    const processedEvents = data.map(event => ({
+                        ...event,
+                        dtstart: new Date(event.dtstart),
+                        dtend: new Date(event.dtend),
+                    }));
+                    setEvents(processedEvents);
+                } catch (e) {
+                    console.error("Failed to fetch events:", e);
+                    setError("Could not load calendar data. Please try again later.");
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+
+            // Fetch events when the component mounts
+            useEffect(() => {
+                fetchEvents();
+            }, []);
+            
+            // Effect to scroll to today's date when switching to list view
+            useEffect(() => {
+                if (view === 'list') {
+                    setTimeout(() => {
+                        const todayElement = document.getElementById('today-marker');
+                        if (todayElement) {
+                            todayElement.scrollIntoView({ behavior: 'auto', block: 'start' });
+                        }
+                    }, 100); // Small delay to ensure DOM is updated
+                }
+            }, [view]);
+
+            const handleTodayClick = () => {
+                if (view === 'calendar') {
+                    setCurrentDate(new Date());
+                } else { // For 'list' or 'search' view
+                    const todayElement = document.getElementById('today-marker');
+                    if (todayElement) {
+                        todayElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }
+            };
+
+            const handleAddEvents = async (newEvents) => {
+                if (isLocalOrPreview) {
+                    console.log("Local mode: Adding events to state.", newEvents);
+                    const eventsWithDates = newEvents.map(e => ({...e, dtstart: new Date(e.dtstart), dtend: new Date(e.dtend)}));
+                    setEvents(prev => [...prev, ...eventsWithDates]);
+                    setIsAddModalOpen(false);
+                    return;
+                }
+                try {
+                    const response = await fetch(API_ENDPOINT, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(newEvents),
+                    });
+                    if (!response.ok) throw new Error('Failed to add events');
+                    await fetchEvents(); // Refetch all events to get the new ones with DB-generated IDs
+                    setIsAddModalOpen(false);
+                } catch (e) {
+                    console.error("Error adding events:", e);
+                    setError("Failed to save new events.");
+                }
+            };
+
+            const handleDayClick = (date) => { setSelectedDay({ date, singleEvent: null }); setIsDayModalOpen(true); };
+            const handleEventClick = (event, date) => {
+                setSelectedDay({ date, singleEvent: event });
+                setIsDayModalOpen(true);
+            };
+            const handleCloseModal = () => { setSelectedDay({ date: null, singleEvent: null }); setIsDayModalOpen(false); };
+            
+            const handleEditEvent = (event) => { setEditingEvent(event); setIsAddModalOpen(true); };
+            const handleCancelEdit = () => { setEditingEvent(null); setIsAddModalOpen(false); };
+            
+            const handleUpdateEvent = async (updatedEvent) => {
+                 if (isLocalOrPreview) {
+                    console.log("Local mode: Updating event.", updatedEvent);
+                    setEvents(events.map(e => e.uid === updatedEvent.uid ? {...updatedEvent, dtstart: new Date(updatedEvent.dtstart), dtend: new Date(updatedEvent.dtend)} : e));
+                    setEditingEvent(null);
+                    setIsAddModalOpen(false);
+                    return;
+                }
+                try {
+                    const response = await fetch(`${API_ENDPOINT}?uid=${updatedEvent.uid}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(updatedEvent),
+                    });
+                    if (!response.ok) throw new Error('Failed to update event');
+                    await fetchEvents(); // Refetch to update the UI
+                    setEditingEvent(null);
+                    setIsAddModalOpen(false);
+                } catch (e) {
+                    console.error("Error updating event:", e);
+                    setError("Failed to update event.");
+                }
+            };
+
+            const handleDeleteEvent = async (uidToDelete) => {
+                if (isLocalOrPreview) {
+                    console.log("Local mode: Deleting event.", uidToDelete);
+                    setEvents(events.filter(e => e.uid !== uidToDelete));
+                    return;
+                }
+                try {
+                    const response = await fetch(`${API_ENDPOINT}?uid=${uidToDelete}`, {
+                        method: 'DELETE',
+                    });
+                    if (!response.ok) throw new Error('Failed to delete event');
+                    setEvents(events.filter(e => e.uid !== uidToDelete)); // Optimistic update
+                } catch (e) {
+                    console.error("Error deleting event:", e);
+                    setError("Failed to delete event.");
+                    fetchEvents(); // Refetch to correct UI if delete failed
+                }
+            };
+
+            const handleDeleteSeries = async (seriesIdToDelete) => {
+                if (isLocalOrPreview) {
+                    console.log("Local mode: Deleting series.", seriesIdToDelete);
+                    setEvents(events.filter(e => e.seriesId !== seriesIdToDelete));
+                    return;
+                }
+                try {
+                    const response = await fetch(`${API_ENDPOINT}?seriesId=${seriesIdToDelete}`, {
+                        method: 'DELETE',
+                    });
+                     if (!response.ok) throw new Error('Failed to delete series');
+                    setEvents(events.filter(e => e.seriesId !== seriesIdToDelete)); // Optimistic update
+                } catch (e) {
+                    console.error("Error deleting series:", e);
+                    setError("Failed to delete event series.");
+                    fetchEvents(); // Refetch to correct UI
+                }
+            };
+
+            const handleUpdateSeries = async (editedEvent, updatedData) => {
+                 if (isLocalOrPreview) {
+                    console.log("Local mode: Updating series is complex. Refetching mock data for simplicity.");
+                    fetchEvents(); // Just reset to mock data in local mode
+                    setEditingEvent(null);
+                    setIsAddModalOpen(false);
+                    return;
+                }
+                 try {
+                    const response = await fetch(`${API_ENDPOINT}?seriesId=${editedEvent.seriesId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ...updatedData, type: editedEvent.type }),
+                    });
+                    if (!response.ok) throw new Error('Failed to update series');
+                    await fetchEvents();
+                    setEditingEvent(null);
+                    setIsAddModalOpen(false);
+                } catch (e) {
+                    console.error("Error updating series:", e);
+                    setError("Failed to update event series.");
+                }
+            };
+
+            const modalEvents = useMemo(() => {
+                if (!selectedDay.date) return [];
+                if (selectedDay.singleEvent) return [selectedDay.singleEvent];
+                return events.filter(event => {
+                    const eventStart = new Date(event.dtstart); eventStart.setHours(0,0,0,0);
+                    const eventEnd = new Date(event.dtend);
+                    const isSameStartEndDay = isSameDay(new Date(event.dtstart), new Date(event.dtend));
+                    if (!isSameStartEndDay && eventEnd.getHours() === 0 && eventEnd.getMinutes() === 0) {
+                        eventEnd.setDate(eventEnd.getDate() - 1);
+                    }
+                    eventEnd.setHours(23,59,59,999);
+                    return selectedDay.date >= eventStart && selectedDay.date <= eventEnd;
+                }).sort((a, b) => {
+                    const isABoarding = a.type === 'boarding';
+                    const isBBoarding = b.type === 'boarding';
+                    if (isABoarding && !isBBoarding) return -1;
+                    if (!isABoarding && isBBoarding) return 1;
+                    return new Date(a.dtstart) - new Date(b.dtstart);
+                });
+            }, [selectedDay, events]);
+
+            const sortedEvents = useMemo(() => [...events].sort((a,b) => new Date(a.dtstart) - new Date(b.dtstart)), [events]);
+
+            const filteredEvents = useMemo(() => {
+                if (!searchQuery && !selectedService) {
+                    return [];
+                }
+
+                let eventsToFilter = sortedEvents;
+
+                if (searchQuery) {
+                    const lowerCaseQuery = searchQuery.toLowerCase();
+                    return eventsToFilter.filter(event => 
+                        event.summary.toLowerCase().includes(lowerCaseQuery) ||
+                        event.type.replace('-', ' ').toLowerCase().includes(lowerCaseQuery)
+                    );
+                }
+
+                if (selectedService) {
+                    return eventsToFilter.filter(event => event.type === selectedService);
+                }
+                
+                return [];
+            }, [searchQuery, selectedService, sortedEvents]);
+
+            const groupEvents = (sourceEvents) => {
+                const groups = {};
+                sourceEvents.forEach(event => {
+                    const startDate = new Date(event.dtstart); startDate.setHours(0,0,0,0);
+                    const endDate = new Date(event.dtend); endDate.setHours(0,0,0,0);
+                    if (!isSameDay(new Date(event.dtstart), new Date(event.dtend)) && new Date(event.dtend).getHours() === 0 && new Date(event.dtend).getMinutes() === 0) {
+                        endDate.setDate(endDate.getDate() - 1);
+                    }
+                    let currentDate = new Date(startDate);
+                    while(currentDate <= endDate) {
+                        const dateKey = currentDate.toDateString();
+                        if(!groups[dateKey]) {
+                            groups[dateKey] = [];
+                        }
+                        groups[dateKey].push(event);
+                        currentDate.setDate(currentDate.getDate() + 1);
+                    }
+                });
+                const sortedGroups = {};
+                Object.keys(groups).sort((a,b) => new Date(a) - new Date(b)).forEach(key => {
+                    sortedGroups[key] = groups[key];
+                    sortedGroups[key].sort((a,b) => new Date(a.dtstart) - new Date(b.dtstart));
+                });
+                return sortedGroups;
+            }
+
+            const groupedListEvents = useMemo(() => groupEvents(sortedEvents), [sortedEvents]);
+            const groupedSearchEvents = useMemo(() => groupEvents(filteredEvents), [filteredEvents]);
+
+            const handleSearchInputChange = (e) => {
+                setSearchQuery(e.target.value);
+                setSelectedService(null); // Clear service filter when typing
+            };
+
+            const handleServiceSelect = (service) => {
+                setSelectedService(prev => prev === service ? null : service); // Toggle selection
+                setSearchQuery(''); // Clear text search when selecting a service
+            };
+
+            const isSearchActive = searchQuery.length > 0 || selectedService !== null;
+            const serviceTypes = ['walk', 'drop-in', 'boarding', 'meet-and-greet'];
+
+            return (
+                <div className="bg-[#141414] min-h-screen font-sans flex justify-center">
+                    <div className="w-full max-w-md flex flex-col h-screen bg-[#141414] overflow-hidden">
+                        
+                        {/* Header */}
+                        <div className="flex-shrink-0">
+                            <CalendarHeader 
+                                currentDate={currentDate} 
+                                setCurrentDate={setCurrentDate} 
+                                view={view}
+                                onTodayClick={handleTodayClick}
+                                setView={setView}
+                            />
+                        </div>
+                        
+                        {/* Main Content Area (Stretches to fill space) */}
+                        <div className="flex-grow flex flex-col overflow-y-auto" ref={contentRef}>
+                           {isLoading && <div className="flex-grow flex items-center justify-center text-white">Loading Calendar...</div>}
+                           {error && <div className="flex-grow flex items-center justify-center text-red-400 p-4 text-center">{error}</div>}
+                           {!isLoading && !error && (
+                             <>
+                                {view === 'calendar' && <CalendarGrid currentDate={currentDate} events={events} onDayClick={handleDayClick} />}
+                                
+                                {view === 'list' && (
+                                    <div className="p-4 h-full">
+                                        <div className="space-y-4">
+                                            {Object.keys(groupedListEvents).length > 0 ? Object.keys(groupedListEvents).map(dateKey => (
+                                                <div key={dateKey} id={new Date(dateKey).toDateString() === todayDateString ? 'today-marker' : null}>
+                                                    <h3 className="font-bold text-gray-300">{new Date(dateKey).toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric' })}</h3>
+                                                    <ul className="mt-2 space-y-2">
+                                                        {groupedListEvents[dateKey].map(event => (
+                                                            <li key={`${event.uid}-${dateKey}`} onClick={() => handleEventClick(event, new Date(dateKey))} className="bg-white/5 rounded-lg flex overflow-hidden cursor-pointer hover:bg-white/10">
+                                                                <div className={`w-1.5 flex-shrink-0 ${getBarColorForEventType(event.type)}`}></div>
+                                                                <div className="p-3 flex items-center gap-3 flex-grow">
+                                                                    <div className="w-20 text-sm text-gray-300">
+                                                                        {formatTime(new Date(event.dtstart))}
+                                                                    </div>
+                                                                    <div className="flex-grow">
+                                                                        <p className="font-semibold text-gray-100">{event.summary}</p>
+                                                                    </div>
+                                                                    <span className="text-xs text-gray-400 self-start">{formatEventType(event.type)}</span>
+                                                                </div>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            )) : <p className="text-center text-gray-500 py-8">No events found.</p>}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {view === 'search' && (
+                                    <div className="p-4 h-full">
+                                        <input type="text" value={searchQuery} onChange={handleSearchInputChange} placeholder="Search by pet name..." className="w-full px-4 py-2 text-sm bg-white/5 border border-white/10 text-white rounded-full focus:outline-none focus:ring-2 focus:ring-white/20 mb-4" />
+                                        
+                                        <div className="grid grid-cols-2 gap-2 mb-4">
+                                            {serviceTypes.map(service => (
+                                                <button key={service} onClick={() => handleServiceSelect(service)} className={`flex items-center gap-2 p-2 rounded-full text-sm transition-colors ${selectedService === service ? 'bg-white/20' : 'bg-white/5 hover:bg-white/10'}`}>
+                                                    <div className={`w-3 h-3 rounded-full ${getBarColorForEventType(service)}`}></div>
+                                                    <span className="text-gray-200">{formatEventType(service)}</span>
+                                                </button>
+                                            ))}
+                                        </div>
+
+                                        {isSearchActive && (
+                                            <div className="space-y-4">
+                                                {Object.keys(groupedSearchEvents).length > 0 ? Object.keys(groupedSearchEvents).map(dateKey => (
+                                                    <div key={dateKey}>
+                                                        <h3 className="font-bold text-gray-300">{new Date(dateKey).toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric' })}</h3>
+                                                        <ul className="mt-2 space-y-2">
+                                                            {groupedSearchEvents[dateKey].map(event => (
+                                                                <li key={`${event.uid}-${dateKey}`} onClick={() => handleEventClick(event, new Date(dateKey))} className="bg-white/5 rounded-lg flex overflow-hidden cursor-pointer hover:bg-white/10">
+                                                                    <div className={`w-1.5 flex-shrink-0 ${getBarColorForEventType(event.type)}`}></div>
+                                                                    <div className="p-3 flex items-center gap-3 flex-grow">
+                                                                        <div className="w-20 text-sm text-gray-300">
+                                                                            {formatTime(new Date(event.dtstart))}
+                                                                        </div>
+                                                                        <div className="flex-grow">
+                                                                            <p className="font-semibold text-gray-100">{event.summary}</p>
+                                                                        </div>
+                                                                        <span className="text-xs text-gray-400 self-start">{formatEventType(event.type)}</span>
+                                                                    </div>
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                )) : <p className="text-center text-gray-500 py-8">No events found.</p>}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                                {view === 'insights' && <InsightsPage events={events} currentDate={currentDate} />}
+                                {view === 'settings' && (
+                                    <div className="p-4 h-full text-white flex items-center justify-center">
+                                        <h2 className="text-2xl">Settings Page (Coming Soon)</h2>
+                                    </div>
+                                )}
+                             </>
+                           )}
+                        </div>
+
+                        {/* Footer Navigation */}
+                        <div className="flex-shrink-0 border-t border-white/10 flex justify-around items-center p-2">
+                            <button onClick={() => setView(v => v === 'insights' ? 'calendar' : 'insights')} className={`p-3 transition-colors ${view === 'insights' ? 'text-white' : 'text-[#7B7B7B]'}`}>
+                                <Smile size={28} />
+                            </button>
+                            <button onClick={() => setView(v => v === 'list' ? 'calendar' : 'list')} className={`p-3 transition-colors ${view === 'list' ? 'text-white' : 'text-[#7B7B7B]'}`}>
+                                {view === 'list' ? <CalendarIcon size={28} /> : <List size={28} />}
+                            </button>
+                            <button onClick={() => setIsAddModalOpen(true)} className="p-3 text-[#7B7B7B] transition-transform transform active:scale-90">
+                                <PlusCircle size={32} />
+                            </button>
+                            <button onClick={() => setView(v => v === 'search' ? 'calendar' : 'search')} className={`p-3 transition-colors ${view === 'search' ? 'text-white' : 'text-[#7B7B7B]'}`}>
+                                <Search size={28} />
+                            </button>
+                             <button onClick={() => setView(v => v === 'settings' ? 'calendar' : 'settings')} className={`p-3 transition-colors ${view === 'settings' ? 'text-white' : 'text-[#7B7B7B]'}`}>
+                                <MoreHorizontal size={28} />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Modals remain outside the main layout flow */}
+                    <EventModal 
+                        isOpen={isDayModalOpen} 
+                        onClose={handleCloseModal} 
+                        date={selectedDay.date}
+                        events={modalEvents}
+                        onEdit={handleEditEvent}
+                        onDelete={handleDeleteEvent}
+                        onDeleteSeries={handleDeleteSeries}
+                    />
+                    <AddEventForm 
+                        isOpen={isAddModalOpen}
+                        onAddEvents={handleAddEvents} 
+                        eventToEdit={editingEvent}
+                        onUpdateEvent={handleUpdateEvent}
+                        onUpdateSeries={handleUpdateSeries}
+                        onCancelEdit={handleCancelEdit}
+                    />
+                </div>
+            );
+        };
+
+        const container = document.getElementById('root');
+        const root = ReactDOM.createRoot(container);
+        root.render(<App />);
+    </script>
+</body>
+</html>
