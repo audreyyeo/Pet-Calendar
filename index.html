@@ -331,10 +331,10 @@
             const formatShortDate = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
             const handleEdit = (event) => { onEdit(event); onClose(); }
             const handleDeleteClick = (event) => {
-                if (event.isRecurring) { setConfirmingDelete(event); } 
+                if (event.is_recurring) { setConfirmingDelete(event); } 
                 else { onDelete(event.uid); onClose(); }
             };
-            const confirmSeriesDelete = () => { onDeleteSeries(confirmingDelete.seriesId); setConfirmingDelete(null); onClose(); };
+            const confirmSeriesDelete = () => { onDeleteSeries(confirmingDelete.series_id); setConfirmingDelete(null); onClose(); };
             const confirmSingleDelete = () => { onDelete(confirmingDelete.uid); setConfirmingDelete(null); onClose(); };
             
             const parseYYYYMMDDString = (dateString) => {
@@ -356,7 +356,7 @@
                                         const colorClass = getColorForEventType(event.type);
                                         const textColor = colorClass.split(' ')[1];
                                         const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-                                        const recurringDayNames = event.isRecurring && event.recurringDays ? Object.keys(event.recurringDays).filter(day => event.recurringDays[day]).map(dayIndex => dayLabels[dayIndex]).join(', ') : '';
+                                        const recurringDayNames = event.is_recurring && event.recurring_days ? Object.keys(event.recurring_days).filter(day => event.recurring_days[day]).map(dayIndex => dayLabels[dayIndex]).join(', ') : '';
                                         const hasSelectedDays = recurringDayNames && recurringDayNames.length > 0;
 
                                         return (
@@ -373,12 +373,12 @@
                                             ) : (
                                                 <p className="text-sm text-gray-300 mt-1">{formatTime(new Date(event.dtstart))} - {formatTime(new Date(event.dtend))}</p>
                                             )}
-                                            {event.isRecurring && (
+                                            {event.is_recurring && (
                                                 <p className="text-xs text-gray-400 mt-1">
                                                     {hasSelectedDays
                                                         ? `Every ${recurringDayNames}`
-                                                        : event.seriesStartDate && event.recurUntil
-                                                            ? `${formatShortDate(parseYYYYMMDDString(event.seriesStartDate))} to ${formatShortDate(parseYYYYMMDDString(event.recurUntil))}`
+                                                        : event.series_start_date && event.recur_until
+                                                            ? `${formatShortDate(parseYYYYMMDDString(event.series_start_date))} to ${formatShortDate(parseYYYYMMDDString(event.recur_until))}`
                                                             : 'Recurring Event'
                                                     }
                                                 </p>
@@ -416,7 +416,7 @@
             const [date, setDate] = useState(formatDateToYYYYMMDD(new Date()));
             const [time, setTime] = useState('09:00');
             const [duration, setDuration] = useState(30);
-            const [description, setDescription] = useState(''); // State for optional notes
+            const [description, setDescription] = useState('');
             const [isRecurring, setIsRecurring] = useState(false);
             const [recurringDays, setRecurringDays] = useState({ 0: false, 1: false, 2: false, 3: false, 4: false, 5: false, 6: false });
             const [recurUntil, setRecurUntil] = useState(formatDateToYYYYMMDD(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)));
@@ -441,8 +441,8 @@
                         setEndDate(formatDateToYYYYMMDD(end));
                         setPickUpTime(`${end.getHours().toString().padStart(2, '0')}:${end.getMinutes().toString().padStart(2, '0')}`);
                     } else {
-                        if (eventToEdit.isRecurring && eventToEdit.seriesStartDate) {
-                            setDate(eventToEdit.seriesStartDate);
+                        if (eventToEdit.is_recurring && eventToEdit.series_start_date) {
+                            setDate(eventToEdit.series_start_date);
                         } else {
                             setDate(formatDateToYYYYMMDD(start));
                         }
@@ -451,11 +451,11 @@
                         setDuration(durationMinutes);
                     }
 
-                    setIsRecurring(eventToEdit.isRecurring || false);
-                    setRecurringDays(eventToEdit.recurringDays || { 0: false, 1: false, 2: false, 3: false, 4: false, 5: false, 6: false });
+                    setIsRecurring(eventToEdit.is_recurring || false);
+                    setRecurringDays(eventToEdit.recurring_days || { 0: false, 1: false, 2: false, 3: false, 4: false, 5: false, 6: false });
                     
-                    if (eventToEdit.isRecurring && eventToEdit.recurUntil) {
-                        setRecurUntil(eventToEdit.recurUntil);
+                    if (eventToEdit.is_recurring && eventToEdit.recur_until) {
+                        setRecurUntil(eventToEdit.recur_until);
                     } else {
                         const defaultRecurDate = new Date();
                         defaultRecurDate.setDate(defaultRecurDate.getDate() + 7);
@@ -482,8 +482,8 @@
             const handleSubmit = (e) => {
                 e.preventDefault(); if (!name) return;
                 if (isEditMode) {
-                    if (eventToEdit.isRecurring && updateScope === 'series') {
-                        const updatedSeriesData = { name, time, duration, recurringDays, recurUntil, description };
+                    if (eventToEdit.is_recurring && updateScope === 'series') {
+                        const updatedSeriesData = { name, time, duration, recurring_days: recurringDays, recur_until: recurUntil, description };
                         onUpdateSeries(eventToEdit, { ...updatedSeriesData, type: eventToEdit.type });
                     } else {
                         let updatedEvent = { ...eventToEdit, summary: name, type, description };
@@ -496,7 +496,7 @@
                             const eventEnd = new Date(eventStart.getTime() + finalDuration * 60000);
                             updatedEvent.dtstart = eventStart.toISOString();
                             updatedEvent.dtend = eventEnd.toISOString();
-                            updatedEvent.isRecurring = false; delete updatedEvent.seriesId; delete updatedEvent.recurringDays;
+                            updatedEvent.is_recurring = false; delete updatedEvent.series_id; delete updatedEvent.recurring_days;
                         }
                         onUpdateEvent(updatedEvent);
                     }
@@ -513,15 +513,15 @@
                     if (!hasSelectedDays) {
                         selectedDays = [0, 1, 2, 3, 4, 5, 6]; // Default to daily
                     }
-                    const seriesStartDate = date;
+                    const series_start_date = date;
                     let currentDate = parseDateTime(date);
                     const untilDate = parseDateTime(recurUntil, '23:59');
-                    const seriesId = `manual-series-${crypto.randomUUID()}`;
+                    const series_id = `manual-series-${crypto.randomUUID()}`;
                     while (currentDate <= untilDate) {
                         if (selectedDays.includes(currentDate.getDay())) {
                             const eventStart = parseDateTime(formatDateToYYYYMMDD(currentDate), time);
                             const eventEnd = new Date(eventStart.getTime() + duration * 60000);
-                            newEvents.push({ summary: name, dtstart: eventStart.toISOString(), dtend: eventEnd.toISOString(), type, description, uid: `manual-${crypto.randomUUID()}`, isRecurring: true, recurringDays: hasSelectedDays ? recurringDays : null, seriesId, recurUntil, seriesStartDate });
+                            newEvents.push({ summary: name, dtstart: eventStart.toISOString(), dtend: eventEnd.toISOString(), type, description, uid: `manual-${crypto.randomUUID()}`, is_recurring: true, recurring_days: hasSelectedDays ? recurringDays : null, series_id, recur_until: recurUntil, series_start_date });
                         }
                         currentDate.setDate(currentDate.getDate() + 1);
                     }
@@ -574,12 +574,12 @@
                                 <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder="Pet's Name" className={inputClasses} required />
                                 <div>
                                     <label className="text-xs text-gray-400 block mb-1 px-4">Service Type</label>
-                                    <select value={type} onChange={e => setType(e.target.value)} className={selectClasses} disabled={isEditMode && eventToEdit.isRecurring && updateScope === 'series'}>
+                                    <select value={type} onChange={e => setType(e.target.value)} className={selectClasses} disabled={isEditMode && eventToEdit.is_recurring && updateScope === 'series'}>
                                         <option value="walk">Walk</option><option value="drop-in">Drop-in</option>
                                         <option value="boarding">Boarding</option><option value="meet-and-greet">Meet & Greet</option>
                                     </select>
                                 </div>
-                                {isEditMode && eventToEdit.isRecurring && (
+                                {isEditMode && eventToEdit.is_recurring && (
                                     <div className="text-sm text-gray-400 p-3 bg-black/30 rounded-2xl space-y-2">
                                         <p className="font-semibold text-center">Edit Recurring Event</p>
                                         <div className="flex justify-around">
@@ -829,7 +829,7 @@
             const handleDeleteSeries = async (seriesIdToDelete) => {
                 if (isLocalOrPreview) {
                     console.log("Local mode: Deleting series.", seriesIdToDelete);
-                    setEvents(events.filter(e => e.seriesId !== seriesIdToDelete));
+                    setEvents(events.filter(e => e.series_id !== seriesIdToDelete));
                     return;
                 }
                 try {
@@ -837,7 +837,7 @@
                         method: 'DELETE',
                     });
                      if (!response.ok) throw new Error('Failed to delete series');
-                    setEvents(events.filter(e => e.seriesId !== seriesIdToDelete)); // Optimistic update
+                    setEvents(events.filter(e => e.series_id !== seriesIdToDelete)); // Optimistic update
                 } catch (e) {
                     console.error("Error deleting series:", e);
                     setError("Failed to delete event series.");
@@ -854,7 +854,7 @@
                     return;
                 }
                  try {
-                    const response = await fetch(`${API_ENDPOINT}?seriesId=${editedEvent.seriesId}`, {
+                    const response = await fetch(`${API_ENDPOINT}?seriesId=${editedEvent.series_id}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ ...updatedData, type: editedEvent.type }),
