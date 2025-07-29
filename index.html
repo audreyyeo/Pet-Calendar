@@ -137,6 +137,59 @@
 
         // --- React Components ---
 
+        const PasswordScreen = ({ onCorrectPassword }) => {
+            const [password, setPassword] = useState('');
+            const [error, setError] = useState('');
+            
+            // --- CHANGE YOUR PASSWORD HERE ---
+            const CORRECT_PASSWORD = 'mlem';
+            
+            const errorMessages = [
+                'Oops, no treat for that! Try again.',
+                'That bone didn’t fetch it. Try again.',
+                'Sniff sniff… that\'s not quite right.',
+                'Purr‑mission denied. Try again.',
+                'Wrong password. The cat is unimpressed.'
+            ];
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (password === CORRECT_PASSWORD) {
+                    onCorrectPassword();
+                } else {
+                    const randomError = errorMessages[Math.floor(Math.random() * errorMessages.length)];
+                    setError(randomError);
+                    setPassword('');
+                }
+            };
+
+            return (
+                <div className="flex flex-col items-center justify-center h-screen bg-[#141414] text-white p-4">
+                    <div className="w-full max-w-sm text-center">
+                        <CustomIcon className="w-16 h-16 mx-auto mb-6 text-gray-400" />
+                        <h1 className="text-2xl font-bold mb-6">Pet Calendar</h1>
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <input
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                placeholder="Meow-code?"
+                                className="w-full px-4 py-2 text-lg bg-white/5 border border-white/10 text-white rounded-full focus:outline-none focus:ring-2 focus:ring-white/20 text-center"
+                                autoFocus
+                            />
+                            <button
+                                type="submit"
+                                className="w-full px-4 py-2 font-semibold text-black bg-gray-200 rounded-full hover:bg-white transition-colors"
+                            >
+                                Unlock
+                            </button>
+                        </form>
+                        {error && <p className="text-gray-400 mt-4">{error}</p>}
+                    </div>
+                </div>
+            );
+        };
+
         const InsightsPage = ({ events, currentDate }) => {
             const visualizationEvents = useMemo(() => {
                 const year = currentDate.getFullYear();
@@ -636,6 +689,7 @@
         };
 
         const App = () => {
+            const [isAuthenticated, setIsAuthenticated] = useState(false);
             const [currentDate, setCurrentDate] = useState(new Date(2025, 6, 1)); // Start view in July 2025
             const [events, setEvents] = useState([]);
             const [isLoading, setIsLoading] = useState(true);
@@ -654,6 +708,13 @@
             const API_ENDPOINT = '/.netlify/functions/events';
             // A simple check to see if we're in a local/preview environment vs deployed on Netlify
             const isLocalOrPreview = !window.location.hostname || window.location.hostname === 'localhost';
+
+            // Check for authentication on initial load
+            useEffect(() => {
+                if (sessionStorage.getItem('pet-calendar-auth') === 'true') {
+                    setIsAuthenticated(true);
+                }
+            }, []);
 
             // Function to fetch all events from the backend
             const fetchEvents = async () => {
@@ -722,10 +783,12 @@
                 }
             };
 
-            // Fetch events when the component mounts
+            // Fetch events only when authenticated
             useEffect(() => {
-                fetchEvents();
-            }, []);
+                if (isAuthenticated) {
+                    fetchEvents();
+                }
+            }, [isAuthenticated]);
             
             // Effect to scroll to today's date when switching to list view
             useEffect(() => {
@@ -738,6 +801,11 @@
                     }, 100); // Small delay to ensure DOM is updated
                 }
             }, [view]);
+
+            const handleLogin = () => {
+                sessionStorage.setItem('pet-calendar-auth', 'true');
+                setIsAuthenticated(true);
+            };
 
             const handleTodayClick = () => {
                 if (view === 'calendar') {
@@ -955,6 +1023,10 @@
 
             const isSearchActive = searchQuery.length > 0 || selectedService !== null;
             const serviceTypes = ['walk', 'drop-in', 'boarding', 'meet-and-greet'];
+            
+            if (!isAuthenticated) {
+                return <PasswordScreen onCorrectPassword={handleLogin} />;
+            }
 
             return (
                 <div className="bg-[#141414] min-h-screen font-sans flex justify-center">
