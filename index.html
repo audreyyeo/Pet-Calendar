@@ -402,11 +402,6 @@
             const confirmSeriesDelete = () => { onDeleteSeries(confirmingDelete.series_id); setConfirmingDelete(null); onClose(); };
             const confirmSingleDelete = () => { onDelete(confirmingDelete.uid); setConfirmingDelete(null); onClose(); };
             
-            const parseYYYYMMDDString = (dateString) => {
-                const [year, month, day] = dateString.split('-').map(Number);
-                return new Date(year, month - 1, day);
-            };
-
             return (
                 <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
                     <div className="bg-[#1F1F1F] rounded-2xl shadow-xl w-full max-w-sm max-h-[80vh] flex flex-col">
@@ -443,7 +438,7 @@
                                                     {hasSelectedDays
                                                         ? `Every ${recurringDayNames}`
                                                         : event.series_start_date && event.recur_until
-                                                            ? `${formatShortDate(parseYYYYMMDDString(event.series_start_date))} to ${formatShortDate(parseYYYYMMDDString(event.recur_until))}`
+                                                            ? `${formatShortDate(new Date(event.series_start_date))} to ${formatShortDate(new Date(event.recur_until))}`
                                                             : 'Recurring Event'
                                                     }
                                                 </p>
