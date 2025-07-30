@@ -68,6 +68,8 @@
         const MoreHorizontal = (props) => <svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>;
         const Eye = (props) => <svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>;
         const EyeOff = (props) => <svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>;
+        const Info = (props) => <svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"></circle><line x1="12" x2="12" y1="16" y2="12"></line><line x1="12" x2="12.01" y1="8" y2="8"></line></svg>;
+        const Trash = (props) => <svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" {...props}><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>;
 
 
         // --- Helper Functions ---
@@ -282,6 +284,96 @@
                              ))}
                          </div>
                      </div>
+                </div>
+            );
+        };
+        
+        const SettingsPage = ({ hiddenEventTypes, onToggleEventType, onDeleteAllEvents }) => {
+            const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+            const [showInfo, setShowInfo] = useState(false);
+
+            const daysTillNewYear = useMemo(() => {
+                const today = new Date();
+                const newYearDate = new Date(today.getFullYear() + 1, 0, 1);
+                return Math.ceil((newYearDate - today) / (1000 * 60 * 60 * 24));
+            }, []);
+
+            const hoursTillTomorrow = useMemo(() => {
+                const today = new Date();
+                const tomorrow = new Date(today);
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                tomorrow.setHours(0, 0, 0, 0);
+                return Math.floor((tomorrow - today) / (1000 * 60 * 60));
+            }, []);
+            
+            const serviceTypes = [
+                { type: 'walk', color: 'bg-[#3FADFB]' },
+                { type: 'boarding', color: 'bg-[#C58FFE]' },
+                { type: 'drop-in', color: 'bg-[#22C46F]' },
+                { type: 'meet-and-greet', color: 'bg-[#FED440]' },
+            ];
+
+            const handleDeleteClick = () => {
+                onDeleteAllEvents();
+                setShowDeleteConfirm(false);
+            }
+
+            return (
+                <div className="p-4 h-full text-white flex flex-col justify-between">
+                    <div className="space-y-3">
+                        <div className="bg-white/5 border border-white/10 rounded-3xl p-4 flex items-center">
+                            <div className="text-6xl font-light">{daysTillNewYear}</div>
+                            <div className="ml-4 text-lg text-gray-400 leading-tight">days till<br/>new year</div>
+                        </div>
+                        <div className="bg-white/5 border border-white/10 rounded-3xl p-4 flex items-center">
+                            <div className="text-6xl font-light">{hoursTillTomorrow}</div>
+                            <div className="ml-4 text-lg text-gray-400 leading-tight">hours till<br/>tomorrow</div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-2 gap-3">
+                            {serviceTypes.map(({type, color}) => (
+                                <button 
+                                    key={type} 
+                                    onClick={() => onToggleEventType(type)}
+                                    className={`w-full aspect-square rounded-full transition-opacity duration-300 ${color} ${hiddenEventTypes.includes(type) ? 'opacity-30' : 'opacity-100'}`}
+                                >
+                                </button>
+                            ))}
+                        </div>
+                        <div className="flex flex-col gap-3">
+                            <button onClick={() => setShowDeleteConfirm(true)} className="flex-1 bg-[#D46E46] rounded-3xl flex items-center justify-center">
+                                <Trash size={32} className="text-white"/>
+                            </button>
+                            <button onClick={() => setShowInfo(true)} className="flex-1 bg-white/10 rounded-3xl flex items-center justify-center">
+                                <Info size={32} className="text-gray-300"/>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    {/* Delete Confirmation Modal */}
+                    {showDeleteConfirm && (
+                         <div className="absolute inset-0 bg-black bg-opacity-80 flex items-center justify-center p-4 z-50">
+                            <div className="bg-[#2a2a2a] p-6 rounded-2xl text-center w-full max-w-xs">
+                                <h3 className="text-lg font-bold text-white mb-2">Are you sure?</h3>
+                                <p className="text-gray-300 mb-6">This will permanently delete all events from the calendar.</p>
+                                <div className="flex flex-col gap-3">
+                                    <button onClick={handleDeleteClick} className="w-full px-4 py-2 font-semibold bg-red-600 hover:bg-red-500 text-white rounded-full">Delete All Events</button>
+                                    <button onClick={() => setShowDeleteConfirm(false)} className="w-full px-4 py-2 font-semibold bg-white/10 hover:bg-white/20 text-white rounded-full">Cancel</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Info Modal */}
+                    {showInfo && (
+                         <div className="absolute inset-0 bg-black bg-opacity-80 flex items-center justify-center p-4 z-50" onClick={() => setShowInfo(false)}>
+                            <div className="bg-[#2a2a2a] p-6 rounded-2xl text-center w-full max-w-xs">
+                                <p className="text-gray-200 italic">"Nothing good comes from boredom—except maybe this calendar. Too much time, too many pets. I think it's time to go for a walk."</p>
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         };
@@ -708,6 +800,7 @@
             const [view, setView] = useState('calendar'); // 'calendar', 'list', 'search', 'insights', 'settings'
             const [searchQuery, setSearchQuery] = useState('');
             const [selectedService, setSelectedService] = useState(null);
+            const [hiddenEventTypes, setHiddenEventTypes] = useState([]);
             const contentRef = useRef(null);
             const todayDateString = new Date().toDateString();
             
@@ -943,11 +1036,42 @@
                     setError("Failed to update event series.");
                 }
             };
+            
+            const handleDeleteAllEvents = async () => {
+                if (isLocalOrPreview) {
+                    console.log("Local mode: Deleting all events.");
+                    setEvents([]);
+                    return;
+                }
+                try {
+                    const response = await fetch(`${API_ENDPOINT}?deleteAll=true`, {
+                        method: 'DELETE',
+                    });
+                    if (!response.ok) throw new Error('Failed to delete all events');
+                    setEvents([]); // Optimistic update
+                } catch (e) {
+                    console.error("Error deleting all events:", e);
+                    setError("Failed to delete all events.");
+                    fetchEvents(); // Refetch to correct UI
+                }
+            };
+            
+            const handleToggleEventType = (typeToToggle) => {
+                setHiddenEventTypes(prev => 
+                    prev.includes(typeToToggle) 
+                    ? prev.filter(t => t !== typeToToggle)
+                    : [...prev, typeToToggle]
+                );
+            };
+
+            const calendarVisibleEvents = useMemo(() => {
+                return events.filter(event => !hiddenEventTypes.includes(event.type));
+            }, [events, hiddenEventTypes]);
 
             const modalEvents = useMemo(() => {
                 if (!selectedDay.date) return [];
-                if (selectedDay.singleEvent) return [selectedDay.singleEvent];
-                return events.filter(event => {
+                
+                const dayEvents = events.filter(event => {
                     const eventStart = new Date(event.dtstart); eventStart.setHours(0,0,0,0);
                     const eventEnd = new Date(event.dtend);
                     const isSameStartEndDay = isSameDay(new Date(event.dtstart), new Date(event.dtend));
@@ -963,6 +1087,12 @@
                     if (!isABoarding && isBBoarding) return 1;
                     return new Date(a.dtstart) - new Date(b.dtstart);
                 });
+
+                if (selectedDay.singleEvent) {
+                    return [selectedDay.singleEvent];
+                }
+                return dayEvents;
+
             }, [selectedDay, events]);
 
             const sortedEvents = useMemo(() => [...events].sort((a,b) => new Date(a.dtstart) - new Date(b.dtstart)), [events]);
@@ -1056,7 +1186,7 @@
                            {error && <div className="flex-grow flex items-center justify-center text-red-400 p-4 text-center">{error}</div>}
                            {!isLoading && !error && (
                              <>
-                                {view === 'calendar' && <CalendarGrid currentDate={currentDate} events={events} onDayClick={handleDayClick} />}
+                                {view === 'calendar' && <CalendarGrid currentDate={currentDate} events={calendarVisibleEvents} onDayClick={handleDayClick} />}
                                 
                                 {view === 'list' && (
                                     <div className="p-4 h-full">
@@ -1127,11 +1257,7 @@
                                     </div>
                                 )}
                                 {view === 'insights' && <InsightsPage events={events} currentDate={currentDate} />}
-                                {view === 'settings' && (
-                                    <div className="p-4 h-full text-white flex items-center justify-center">
-                                        <h2 className="text-2xl">Settings Page (Coming Soon)</h2>
-                                    </div>
-                                )}
+                                {view === 'settings' && <SettingsPage hiddenEventTypes={hiddenEventTypes} onToggleEventType={handleToggleEventType} onDeleteAllEvents={handleDeleteAllEvents} />}
                              </>
                            )}
                         </div>
