@@ -178,7 +178,7 @@
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     placeholder="Meow-code?"
-                                    className="w-full px-4 py-2 text-lg bg-white/5 border border-white/10 text-white rounded-full focus:outline-none focus:ring-2 focus:ring-white/20 text-center"
+                                    className="w-full px-4 py-2 text-lg bg-white/5 border border-white/10 text-white rounded-full focus:outline-none focus:ring-2 focus:ring-white/20 text-center pr-12"
                                     autoFocus
                                 />
                                 <button
@@ -374,7 +374,7 @@
 
                             return (
                                 <div key={date.toISOString()} className={`p-1 border-b border-white/10 flex flex-col transition-colors cursor-pointer hover:bg-white/10 ${!isCurrentMonth ? 'bg-black/40' : ''} ${ (index + 1) % 7 === 0 ? '' : 'border-r-0' }`} onClick={() => onDayClick(date)}>
-                                    <span className={`text-xs font-semibold self-center ${isCurrentMonth ? 'text-gray-100' : 'text-gray-500'} ${isToday ? 'bg-white/10 text-white rounded-full w-6 h-6 flex items-center justify-center' : 'w-6 h-6 flex items-center justify-center'}`}>{date.getDate()}</span>
+                                    <span className={`text-xs font-semibold self-center ${isCurrentMonth ? 'text-gray-100' : 'text-gray-500'} ${isToday ? 'bg-white/20 text-white rounded-full w-6 h-6 flex items-center justify-center' : 'w-6 h-6 flex items-center justify-center'}`}>{date.getDate()}</span>
                                     <div className="mt-1 flex-grow overflow-hidden text-[10px] space-y-1">
                                         {dayEvents.slice(0, 4).map((event) => (
                                             <div key={event.uid} className={`py-px px-1 rounded-md truncate ${getBarColorForEventType(event.type)} text-[#141414] font-medium ${!isCurrentMonth ? 'opacity-40' : ''}`}>{event.summary}</div>
