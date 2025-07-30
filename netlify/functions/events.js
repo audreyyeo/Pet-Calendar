@@ -57,11 +57,16 @@ exports.handler = async function(event, context) {
             ev.dtstart,
             ev.dtend,
             ev.description || null,
-            ev.isRecurring || false,
-            ev.recurringDays ? JSON.stringify(ev.recurringDays) : null,
-            ev.seriesId || null,
-            ev.recurUntil || null,
-            ev.seriesStartDate || null
+            // FIX: Changed from camelCase (isRecurring) to snake_case (is_recurring) to match frontend
+            ev.is_recurring || false,
+            // FIX: Changed to snake_case to match frontend
+            ev.recurring_days ? JSON.stringify(ev.recurring_days) : null,
+            // FIX: Changed to snake_case to match frontend
+            ev.series_id || null,
+            // FIX: Changed to snake_case to match frontend
+            ev.recur_until || null,
+            // FIX: Changed to snake_case to match frontend
+            ev.series_start_date || null
           ];
           await client.query(query, values);
         }
@@ -83,6 +88,33 @@ exports.handler = async function(event, context) {
     if (httpMethod === 'PUT') {
         const eventData = JSON.parse(event.body);
         
+        // Handle updates for an entire series
+        if (params.seriesId) {
+             const query = `
+                UPDATE events 
+                SET summary = $1, type = $2, dtstart = $3, dtend = $4, description = $5, is_recurring = $6, recurring_days = $7, recur_until = $8, series_start_date = $9
+                WHERE series_id = $10;
+            `;
+            const values = [
+                eventData.summary,
+                eventData.type,
+                eventData.dtstart,
+                eventData.dtend,
+                eventData.description || null,
+                true, // It's a series, so this is always true
+                eventData.recurring_days ? JSON.stringify(eventData.recurring_days) : null,
+                eventData.recur_until || null,
+                eventData.series_start_date || null,
+                params.seriesId
+            ];
+            await pool.query(query, values);
+            return {
+                statusCode: 200,
+                body: JSON.stringify({ message: 'Event series updated successfully' }),
+            };
+        }
+        
+        // Handle updates for a single event
         if (params.uid) {
             const query = `
                 UPDATE events 
@@ -95,11 +127,12 @@ exports.handler = async function(event, context) {
                 eventData.dtstart,
                 eventData.dtend,
                 eventData.description || null,
-                eventData.isRecurring || false,
-                eventData.recurringDays ? JSON.stringify(eventData.recurringDays) : null,
-                eventData.seriesId || null,
-                eventData.recurUntil || null,
-                eventData.seriesStartDate || null,
+                // FIX: Changed from camelCase to snake_case to match frontend
+                eventData.is_recurring || false,
+                eventData.recurring_days ? JSON.stringify(eventData.recurring_days) : null,
+                eventData.series_id || null,
+                eventData.recur_until || null,
+                eventData.series_start_date || null,
                 params.uid
             ];
             await pool.query(query, values);
