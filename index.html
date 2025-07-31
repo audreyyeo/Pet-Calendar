@@ -29,6 +29,17 @@
     
     <!-- Babel for JSX compilation -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@100&display=swap" rel="stylesheet">
+
+    <style>
+      .font-roboto-mono {
+        font-family: 'Roboto Mono', monospace;
+      }
+    </style>
     
 </head>
 <body class="bg-[#141414]">
@@ -321,13 +332,13 @@
             return (
                 <div className="p-4 h-full text-white flex flex-col justify-between">
                     <div className="space-y-3">
-                        <div className="bg-white/5 border border-white/10 rounded-3xl p-4 flex items-center">
-                            <div className="text-6xl font-light">{daysTillNewYear}</div>
-                            <div className="ml-4 text-lg text-gray-400 leading-tight">days till<br/>new year</div>
+                        <div className="border border-gray-500 rounded-full py-4 px-8 flex items-end justify-start text-gray-300">
+                            <div className="text-8xl font-thin font-roboto-mono">{daysTillNewYear}</div>
+                            <div className="ml-4 pb-2 text-sm text-gray-400 leading-tight">days till<br/>new year</div>
                         </div>
-                        <div className="bg-white/5 border border-white/10 rounded-3xl p-4 flex items-center">
-                            <div className="text-6xl font-light">{hoursTillTomorrow}</div>
-                            <div className="ml-4 text-lg text-gray-400 leading-tight">hours till<br/>tomorrow</div>
+                        <div className="border border-gray-500 rounded-full py-4 px-8 flex items-end justify-start text-gray-300">
+                            <div className="text-8xl font-thin font-roboto-mono">{String(hoursTillTomorrow).padStart(2, '0')}</div>
+                            <div className="ml-4 pb-2 text-sm text-gray-400 leading-tight">hours till<br/>tomorrow</div>
                         </div>
                     </div>
 
@@ -370,7 +381,7 @@
                     {showInfo && (
                          <div className="absolute inset-0 bg-black bg-opacity-80 flex items-center justify-center p-4 z-50" onClick={() => setShowInfo(false)}>
                             <div className="bg-[#2a2a2a] p-6 rounded-2xl text-center w-full max-w-xs">
-                                <p className="text-gray-200 italic">"Nothing good comes from boredom—except maybe this calendar. Too much time, too many pets. I think it's time to go for a walk."</p>
+                                <p className="text-gray-200 italic">Nothing good comes from boredom—except maybe this calendar. Too much time, too many pets. I think it's time to go for a walk.</p>
                             </div>
                         </div>
                     )}
