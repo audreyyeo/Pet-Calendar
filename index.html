@@ -44,7 +44,7 @@
         to { transform: scale(1); opacity: 1; }
       }
       .animate-scale-in {
-        animation: scale-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+        animation: scale-in 0.5s cubic-bezier(0.25, 0.1, 0.25, 1) both;
       }
     </style>
     
@@ -294,11 +294,11 @@
                          )}
                      </div>
                      <div className="mt-6 rounded-lg">
-                         <div className="flex flex-wrap justify-center gap-x-4 gap-y-2">
+                         <div className="flex flex-nowrap justify-center gap-x-3 overflow-x-auto">
                              {serviceTypes.map(service => (
-                                 <div key={service.type} className="flex items-center gap-2">
-                                     <div className={`w-4 h-4 rounded-full ${getBarColorForEventType(service.type)} opacity-70`}></div>
-                                     <span className="text-sm text-gray-300 font-roboto-mono">{service.label}</span>
+                                 <div key={service.type} className="flex items-center gap-2 flex-shrink-0">
+                                     <div className={`w-3 h-3 rounded-full ${getBarColorForEventType(service.type)} opacity-70`}></div>
+                                     <span className="text-xs text-gray-300 font-roboto-mono">{service.label}</span>
                                  </div>
                              ))}
                          </div>
@@ -341,11 +341,11 @@
                 <div className="p-4 h-full text-white flex flex-col justify-between">
                     <div className="space-y-3">
                         <div className="border border-gray-500 rounded-full py-4 px-8 flex items-end justify-start text-gray-300">
-                            <div className="text-8xl font-thin font-roboto-mono">{daysTillNewYear}</div>
+                            <div className="text-8xl font-thin font-roboto-mono tracking-tighter">{daysTillNewYear}</div>
                             <div className="ml-4 pb-2 text-sm text-gray-400 leading-tight">days till<br/>new year</div>
                         </div>
                         <div className="border border-gray-500 rounded-full py-4 px-8 flex items-end justify-start text-gray-300">
-                            <div className="text-8xl font-thin font-roboto-mono">{String(hoursTillTomorrow).padStart(2, '0')}</div>
+                            <div className="text-8xl font-thin font-roboto-mono tracking-tighter">{String(hoursTillTomorrow).padStart(2, '0')}</div>
                             <div className="ml-4 pb-2 text-sm text-gray-400 leading-tight">hours till<br/>tomorrow</div>
                         </div>
                     </div>
