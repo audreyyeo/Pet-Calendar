@@ -18,9 +18,26 @@ const formatDateToYYYYMMDD = (date) => {
     return `${year}-${month}-${day}`;
 };
 
+/**
+ * Parses a date string and optional time string into a Date object.
+ * FIX: This function is now robust and can handle both simple "YYYY-MM-DD" strings
+ * and full ISO timestamp strings like "YYYY-MM-DDTHH:mm:ss.sssZ".
+ * @param {string} dateString The date string to parse.
+ * @param {string} [timeString='00:00'] The time string.
+ * @returns {Date} The parsed Date object.
+ */
 const parseDateTime = (dateString, timeString = '00:00') => {
-    const [year, month, day] = dateString.split('-').map(Number);
+    // Take only the date part of the string, ignoring the time and timezone if present.
+    const cleanDateString = dateString.split('T')[0];
+    
+    const [year, month, day] = cleanDateString.split('-').map(Number);
     const [hours, minutes] = timeString.split(':').map(Number);
+    
+    // This check prevents crashes if the date format is completely wrong.
+    if (isNaN(year) || isNaN(month) || isNaN(day)) {
+        return new Date(NaN); // Return an invalid date
+    }
+
     return new Date(year, month - 1, day, hours, minutes);
 };
 
@@ -85,17 +102,10 @@ exports.handler = async function(event, context) {
         const eventData = JSON.parse(event.body);
         
         if (params.seriesId) {
-            // ========================================================================
-            // --- DEBUG LOGGING ADDED ---
-            // ========================================================================
-            console.log(`[DEBUG] Starting series update for seriesId: ${params.seriesId}`);
-            console.log('[DEBUG] Received eventData:', JSON.stringify(eventData, null, 2));
-            
             const client = await pool.connect();
             try {
                 await client.query('BEGIN');
 
-                console.log('[DEBUG] Deleting old events from series.');
                 await client.query('DELETE FROM events WHERE series_id = $1;', [params.seriesId]);
 
                 const { summary, time, duration, recurring_days, recur_until, series_start_date, type } = eventData;
@@ -107,16 +117,8 @@ exports.handler = async function(event, context) {
                 let currentDate = parseDateTime(series_start_date);
                 const untilDate = parseDateTime(recur_until, '23:59');
 
-                console.log(`[DEBUG] Parsed start date: ${currentDate.toISOString()}`);
-                console.log(`[DEBUG] Parsed until date: ${untilDate.toISOString()}`);
-                console.log(`[DEBUG] Loop condition (currentDate <= untilDate) is: ${currentDate <= untilDate}`);
-
-                let insertedEventCount = 0;
                 while (currentDate <= untilDate) {
                     if (selectedDays.includes(currentDate.getDay())) {
-                        insertedEventCount++;
-                        console.log(`[DEBUG] Inserting event for date: ${currentDate.toISOString()}`);
-                        
                         const eventStart = parseDateTime(formatDateToYYYYMMDD(currentDate), time);
                         const finalDuration = type === 'meet-and-greet' ? 30 : duration;
                         const eventEnd = new Date(eventStart.getTime() + finalDuration * 60000);
@@ -136,16 +138,12 @@ exports.handler = async function(event, context) {
                     currentDate.setDate(currentDate.getDate() + 1);
                 }
 
-                console.log(`[DEBUG] Loop finished. Total events inserted: ${insertedEventCount}`);
                 await client.query('COMMIT');
-                console.log('[DEBUG] Transaction committed successfully.');
-
                 return {
                     statusCode: 200,
                     body: JSON.stringify({ message: 'Event series updated successfully' }),
                 };
             } catch (e) {
-                console.error('[ERROR] An error occurred during series update, rolling back transaction.', e);
                 await client.query('ROLLBACK');
                 throw e;
             } finally {
@@ -154,7 +152,6 @@ exports.handler = async function(event, context) {
         }
         
         if (params.uid) {
-            // This logic for single events remains unchanged
             const query = `
                 UPDATE events 
                 SET summary = $1, type = $2, dtstart = $3, dtend = $4, description = $5, is_recurring = $6, recurring_days = $7, series_id = $8, recur_until = $9, series_start_date = $10
