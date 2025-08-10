@@ -1,6 +1,8 @@
 // netlify/functions/events.js
 
 const { Pool } = require('pg');
+// FIX: Import the built-in crypto module to safely generate unique IDs.
+const crypto = require('crypto');
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -10,8 +12,6 @@ const pool = new Pool({
 });
 
 // --- HELPER FUNCTIONS ---
-// These helpers are added to correctly calculate dates on the server,
-// mirroring the logic from your frontend code.
 
 /**
  * Formats a Date object into a 'YYYY-MM-DD' string.
@@ -34,7 +34,6 @@ const formatDateToYYYYMMDD = (date) => {
 const parseDateTime = (dateString, timeString = '00:00') => {
     const [year, month, day] = dateString.split('-').map(Number);
     const [hours, minutes] = timeString.split(':').map(Number);
-    // Note: The month is 0-indexed in JavaScript's Date constructor.
     return new Date(year, month - 1, day, hours, minutes);
 };
 
@@ -98,40 +97,36 @@ exports.handler = async function(event, context) {
     if (httpMethod === 'PUT') {
         const eventData = JSON.parse(event.body);
         
-        // ========================================================================
-        // --- FIX: REWRITTEN LOGIC FOR UPDATING AN ENTIRE RECURRING SERIES ---
-        // The original code was trying to run a single UPDATE, which is incorrect.
-        // The correct logic is to delete the old series and regenerate all events.
-        // ========================================================================
         if (params.seriesId) {
             const client = await pool.connect();
             try {
-                await client.query('BEGIN'); // Start transaction
+                await client.query('BEGIN');
 
-                // 1. Delete all old events belonging to this series
                 await client.query('DELETE FROM events WHERE series_id = $1;', [params.seriesId]);
 
-                // 2. Regenerate new events based on the updated data from the frontend
                 const { summary, time, duration, recurring_days, recur_until, description, type, series_start_date } = eventData;
                 let selectedDays = Object.keys(recurring_days).filter(day => recurring_days[day]).map(Number);
                 if (selectedDays.length === 0) {
-                    selectedDays = [0, 1, 2, 3, 4, 5, 6]; // Default to daily if none are selected
+                    selectedDays = [0, 1, 2, 3, 4, 5, 6];
                 }
                 
                 let currentDate = parseDateTime(series_start_date);
-                const untilDate = parseDateTime(recur_until);
+                // FIX: Set the time to the end of the day to ensure the loop includes the last day.
+                const untilDate = parseDateTime(recur_until, '23:59');
 
                 while (currentDate <= untilDate) {
                     if (selectedDays.includes(currentDate.getDay())) {
                         const eventStart = parseDateTime(formatDateToYYYYMMDD(currentDate), time);
-                        const eventEnd = new Date(eventStart.getTime() + duration * 60000);
+                        // FIX: Ensure "Meet & Greet" events always have the correct duration.
+                        const finalDuration = type === 'meet-and-greet' ? 30 : duration;
+                        const eventEnd = new Date(eventStart.getTime() + finalDuration * 60000);
                         
                         const insertQuery = `
                             INSERT INTO events (uid, summary, type, dtstart, dtend, description, is_recurring, recurring_days, series_id, recur_until, series_start_date)
                             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);
                         `;
                         const insertValues = [
-                            `manual-${crypto.randomUUID()}`, // Generate a new unique ID for the event instance
+                            `manual-${crypto.randomUUID()}`,
                             summary,
                             type,
                             eventStart.toISOString(),
@@ -139,7 +134,7 @@ exports.handler = async function(event, context) {
                             description || null,
                             true,
                             JSON.stringify(recurring_days),
-                            params.seriesId, // Use the original series ID
+                            params.seriesId,
                             recur_until,
                             series_start_date
                         ];
@@ -148,20 +143,19 @@ exports.handler = async function(event, context) {
                     currentDate.setDate(currentDate.getDate() + 1);
                 }
 
-                await client.query('COMMIT'); // Finalize transaction
+                await client.query('COMMIT');
                 return {
                     statusCode: 200,
                     body: JSON.stringify({ message: 'Event series updated successfully' }),
                 };
             } catch (e) {
-                await client.query('ROLLBACK'); // Undo all changes if an error occurs
-                throw e; // This will trigger the main catch block below
+                await client.query('ROLLBACK');
+                throw e;
             } finally {
-                client.release(); // Release the client back to the pool
+                client.release();
             }
         }
         
-        // --- Logic for updating a single event ---
         if (params.uid) {
             const query = `
                 UPDATE events 
