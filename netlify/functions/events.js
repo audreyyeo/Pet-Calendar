@@ -1,7 +1,6 @@
 // netlify/functions/events.js
 
 const { Pool } = require('pg');
-// FIX: Import the built-in crypto module to safely generate unique IDs.
 const crypto = require('crypto');
 
 const pool = new Pool({
@@ -12,12 +11,6 @@ const pool = new Pool({
 });
 
 // --- HELPER FUNCTIONS ---
-
-/**
- * Formats a Date object into a 'YYYY-MM-DD' string.
- * @param {Date} date The date to format.
- * @returns {string} The formatted date string.
- */
 const formatDateToYYYYMMDD = (date) => {
     const year = date.getFullYear();
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
@@ -25,12 +18,6 @@ const formatDateToYYYYMMDD = (date) => {
     return `${year}-${month}-${day}`;
 };
 
-/**
- * Parses a date string and optional time string into a Date object.
- * @param {string} dateString The date string in 'YYYY-MM-DD' format.
- * @param {string} [timeString='00:00'] The time string in 'HH:MM' format.
- * @returns {Date} The parsed Date object.
- */
 const parseDateTime = (dateString, timeString = '00:00') => {
     const [year, month, day] = dateString.split('-').map(Number);
     const [hours, minutes] = timeString.split(':').map(Number);
@@ -98,26 +85,39 @@ exports.handler = async function(event, context) {
         const eventData = JSON.parse(event.body);
         
         if (params.seriesId) {
+            // ========================================================================
+            // --- DEBUG LOGGING ADDED ---
+            // ========================================================================
+            console.log(`[DEBUG] Starting series update for seriesId: ${params.seriesId}`);
+            console.log('[DEBUG] Received eventData:', JSON.stringify(eventData, null, 2));
+            
             const client = await pool.connect();
             try {
                 await client.query('BEGIN');
 
+                console.log('[DEBUG] Deleting old events from series.');
                 await client.query('DELETE FROM events WHERE series_id = $1;', [params.seriesId]);
 
-                const { summary, time, duration, recurring_days, recur_until, description, type, series_start_date } = eventData;
+                const { summary, time, duration, recurring_days, recur_until, series_start_date, type } = eventData;
                 let selectedDays = Object.keys(recurring_days).filter(day => recurring_days[day]).map(Number);
                 if (selectedDays.length === 0) {
                     selectedDays = [0, 1, 2, 3, 4, 5, 6];
                 }
                 
                 let currentDate = parseDateTime(series_start_date);
-                // FIX: Set the time to the end of the day to ensure the loop includes the last day.
                 const untilDate = parseDateTime(recur_until, '23:59');
 
+                console.log(`[DEBUG] Parsed start date: ${currentDate.toISOString()}`);
+                console.log(`[DEBUG] Parsed until date: ${untilDate.toISOString()}`);
+                console.log(`[DEBUG] Loop condition (currentDate <= untilDate) is: ${currentDate <= untilDate}`);
+
+                let insertedEventCount = 0;
                 while (currentDate <= untilDate) {
                     if (selectedDays.includes(currentDate.getDay())) {
+                        insertedEventCount++;
+                        console.log(`[DEBUG] Inserting event for date: ${currentDate.toISOString()}`);
+                        
                         const eventStart = parseDateTime(formatDateToYYYYMMDD(currentDate), time);
-                        // FIX: Ensure "Meet & Greet" events always have the correct duration.
                         const finalDuration = type === 'meet-and-greet' ? 30 : duration;
                         const eventEnd = new Date(eventStart.getTime() + finalDuration * 60000);
                         
@@ -126,29 +126,26 @@ exports.handler = async function(event, context) {
                             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);
                         `;
                         const insertValues = [
-                            `manual-${crypto.randomUUID()}`,
-                            summary,
-                            type,
-                            eventStart.toISOString(),
-                            eventEnd.toISOString(),
-                            description || null,
-                            true,
-                            JSON.stringify(recurring_days),
-                            params.seriesId,
-                            recur_until,
-                            series_start_date
+                            `manual-${crypto.randomUUID()}`, summary, type,
+                            eventStart.toISOString(), eventEnd.toISOString(), description || null,
+                            true, JSON.stringify(recurring_days), params.seriesId,
+                            recur_until, series_start_date
                         ];
                         await client.query(insertQuery, insertValues);
                     }
                     currentDate.setDate(currentDate.getDate() + 1);
                 }
 
+                console.log(`[DEBUG] Loop finished. Total events inserted: ${insertedEventCount}`);
                 await client.query('COMMIT');
+                console.log('[DEBUG] Transaction committed successfully.');
+
                 return {
                     statusCode: 200,
                     body: JSON.stringify({ message: 'Event series updated successfully' }),
                 };
             } catch (e) {
+                console.error('[ERROR] An error occurred during series update, rolling back transaction.', e);
                 await client.query('ROLLBACK');
                 throw e;
             } finally {
@@ -157,22 +154,17 @@ exports.handler = async function(event, context) {
         }
         
         if (params.uid) {
+            // This logic for single events remains unchanged
             const query = `
                 UPDATE events 
                 SET summary = $1, type = $2, dtstart = $3, dtend = $4, description = $5, is_recurring = $6, recurring_days = $7, series_id = $8, recur_until = $9, series_start_date = $10
                 WHERE uid = $11;
             `;
             const values = [
-                eventData.summary,
-                eventData.type,
-                eventData.dtstart,
-                eventData.dtend,
-                eventData.description || null,
-                eventData.is_recurring || false,
+                eventData.summary, eventData.type, eventData.dtstart, eventData.dtend,
+                eventData.description || null, eventData.is_recurring || false,
                 eventData.recurring_days ? JSON.stringify(eventData.recurring_days) : null,
-                eventData.series_id || null,
-                eventData.recur_until || null,
-                eventData.series_start_date || null,
+                eventData.series_id || null, eventData.recur_until || null, eventData.series_start_date || null,
                 params.uid
             ];
             await pool.query(query, values);
@@ -187,24 +179,15 @@ exports.handler = async function(event, context) {
     if (httpMethod === 'DELETE') {
       if (params.uid) {
         await pool.query('DELETE FROM events WHERE uid = $1;', [params.uid]);
-        return {
-          statusCode: 200,
-          body: JSON.stringify({ message: `Event ${params.uid} deleted.` }),
-        };
+        return { statusCode: 200, body: JSON.stringify({ message: `Event ${params.uid} deleted.` }) };
       }
       if (params.seriesId) {
         await pool.query('DELETE FROM events WHERE series_id = $1;', [params.seriesId]);
-        return {
-          statusCode: 200,
-          body: JSON.stringify({ message: `Event series ${params.seriesId} deleted.` }),
-        };
+        return { statusCode: 200, body: JSON.stringify({ message: `Event series ${params.seriesId} deleted.` }) };
       }
     }
 
-    return {
-      statusCode: 405,
-      body: 'Method Not Allowed',
-    };
+    return { statusCode: 405, body: 'Method Not Allowed' };
 
   } catch (error) {
     console.error(error);
