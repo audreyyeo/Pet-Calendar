@@ -56,7 +56,6 @@
         const { useState, useEffect, useMemo, useRef } = React;
 
         // --- Icon Components (replaces lucide-react dependency) ---
-        // Updated CustomIcon SVG with new code provided by the user
         const CustomIcon = (props) => (
             <svg width={props.size || 24} height={props.size || 24} viewBox="0 0 348 321" fill="currentColor" xmlns="http://www.w3.org/2000/svg" {...props}>
                 <path d="M89.0205 272.969V290.565L34.9336 320.25V298.033L64.9775 281.767L34.9336 265.501V243.284L89.0205 272.969Z"/>
@@ -651,7 +650,7 @@
             );
         };
 
-        const AddEventForm = ({ isOpen, onAddEvents, eventToEdit, onUpdateEvent, onUpdateSeries, onCancelEdit }) => {
+        const AddEventForm = ({ isOpen, onAddEvents, eventToEdit, onUpdateEvent, onUpdateSeries, onCancelEdit, isLocalOrPreview }) => {
             const [name, setName] = useState('');
             const [type, setType] = useState('walk');
             const [date, setDate] = useState(formatDateToYYYYMMDD(new Date()));
@@ -675,6 +674,11 @@
             const handleNameChange = async (e) => {
                 const newName = e.target.value;
                 setName(newName);
+
+                if (isLocalOrPreview) {
+                    setPetNameSuggestions([]);
+                    return;
+                }
                 
                 if (newName.length > 1) {
                     try {
@@ -701,11 +705,12 @@
 
             useEffect(() => {
                 if (eventToEdit) {
+                    const start = new Date(eventToEdit.dtstart);
+                    const end = new Date(eventToEdit.dtend);
+
                     setName(eventToEdit.summary);
                     setType(eventToEdit.type);
                     setDescription(eventToEdit.description || '');
-                    const start = new Date(eventToEdit.dtstart);
-                    const end = new Date(eventToEdit.dtend);
                     
                     if (eventToEdit.type === 'boarding') {
                         setStartDate(formatDateToYYYYMMDD(start));
@@ -713,11 +718,8 @@
                         setEndDate(formatDateToYYYYMMDD(end));
                         setPickUpTime(`${end.getHours().toString().padStart(2, '0')}:${end.getMinutes().toString().padStart(2, '0')}`);
                     } else {
-                        if (eventToEdit.is_recurring && eventToEdit.series_start_date) {
-                            setDate(eventToEdit.series_start_date);
-                        } else {
-                            setDate(formatDateToYYYYMMDD(start));
-                        }
+                        // FIX: Always set the date to the specific instance's date
+                        setDate(formatDateToYYYYMMDD(start));
                         setTime(`${start.getHours().toString().padStart(2, '0')}:${start.getMinutes().toString().padStart(2, '0')}`);
                         const durationMinutes = (end - start) / 60000;
                         setDuration(durationMinutes);
@@ -733,7 +735,6 @@
                         defaultRecurDate.setDate(defaultRecurDate.getDate() + 7);
                         setRecurUntil(formatDateToYYYYMMDD(defaultRecurDate));
                     }
-
                 } else { 
                     resetForm(); 
                 }
@@ -752,28 +753,48 @@
             const resetForm = () => { setName(''); setDescription(''); setIsRecurring(false); setRecurringDays({ 0: false, 1: false, 2: false, 3: false, 4: false, 5: false, 6: false }); onCancelEdit(); setPetNameSuggestions([]); }
 
             const handleSubmit = (e) => {
-                e.preventDefault(); if (!name) return;
+                e.preventDefault();
+                if (!name) return;
+
+                // --- EDIT LOGIC ---
                 if (isEditMode) {
+                    // Handle update for the entire series
                     if (eventToEdit.is_recurring && updateScope === 'series') {
                         const updatedSeriesData = { name, time, duration, recurring_days: recurringDays, recur_until: recurUntil, description };
                         onUpdateSeries(eventToEdit, { ...updatedSeriesData, type: eventToEdit.type });
-                    } else {
-                        let updatedEvent = { ...eventToEdit, summary: name, type, description };
-                        if (type === 'boarding') {
-                            updatedEvent.dtstart = parseDateTime(startDate, dropOffTime).toISOString();
-                            updatedEvent.dtend = parseDateTime(endDate, pickUpTime).toISOString();
-                        } else {
-                            const eventStart = parseDateTime(date, time);
-                            const finalDuration = type === 'meet-and-greet' ? 30 : duration;
-                            const eventEnd = new Date(eventStart.getTime() + finalDuration * 60000);
-                            updatedEvent.dtstart = eventStart.toISOString();
-                            updatedEvent.dtend = eventEnd.toISOString();
-                            updatedEvent.is_recurring = false; delete updatedEvent.series_id; delete updatedEvent.recurring_days;
-                        }
-                        onUpdateEvent(updatedEvent);
+                        resetForm();
+                        return;
                     }
+                    
+                    // Handle update for a single instance or a non-recurring event
+                    let updatedEvent = { ...eventToEdit, summary: name, type, description };
+                    
+                    if (type === 'boarding') {
+                        updatedEvent.dtstart = parseDateTime(startDate, dropOffTime).toISOString();
+                        updatedEvent.dtend = parseDateTime(endDate, pickUpTime).toISOString();
+                    } else {
+                        const eventStart = parseDateTime(date, time);
+                        const finalDuration = type === 'meet-and-greet' ? 30 : duration;
+                        const eventEnd = new Date(eventStart.getTime() + finalDuration * 60000);
+                        updatedEvent.dtstart = eventStart.toISOString();
+                        updatedEvent.dtend = eventEnd.toISOString();
+                        
+                        // If we're updating a single instance of a recurring event,
+                        // we detach it from the series by removing recurrence info.
+                        if (eventToEdit.is_recurring) {
+                            updatedEvent.is_recurring = false;
+                            delete updatedEvent.series_id;
+                            delete updatedEvent.recurring_days;
+                            delete updatedEvent.recur_until;
+                            delete updatedEvent.series_start_date;
+                        }
+                    }
+                    onUpdateEvent(updatedEvent);
+                    resetForm();
                     return;
                 }
+
+                // --- ADD LOGIC ---
                 let newEvents = [];
                 if (type === 'boarding') {
                     const start = parseDateTime(startDate, dropOffTime);
@@ -1183,13 +1204,55 @@
             };
 
             const handleUpdateSeries = async (editedEvent, updatedData) => {
-                 if (isLocalOrPreview) {
-                    console.log("Local mode: Updating series is complex. Refetching mock data for simplicity.");
-                    fetchEvents(); // Just reset to mock data in local mode
+                if (isLocalOrPreview) {
+                    console.log("Local mode: Updating series in state.", updatedData);
+
+                    // Remove all old events from this series
+                    const otherEvents = events.filter(e => e.series_id !== editedEvent.series_id);
+
+                    // Generate new events based on updatedData
+                    let newSeriesEvents = [];
+                    const { name, time, duration, recurring_days, recur_until, description, type } = updatedData;
+                    
+                    let selectedDays = Object.keys(recurring_days).filter(day => recurring_days[day]).map(Number);
+                    if (selectedDays.length === 0) {
+                        selectedDays = [0, 1, 2, 3, 4, 5, 6];
+                    }
+
+                    const series_start_date = editedEvent.series_start_date;
+                    let currentDate = parseDateTime(series_start_date);
+                    const untilDate = parseDateTime(recur_until, '23:59');
+                    const series_id = editedEvent.series_id; // Reuse the same series_id
+
+                    while (currentDate <= untilDate) {
+                        if (selectedDays.includes(currentDate.getDay())) {
+                            const eventStart = parseDateTime(formatDateToYYYYMMDD(currentDate), time);
+                            const eventEnd = new Date(eventStart.getTime() + duration * 60000);
+                            newSeriesEvents.push({
+                                summary: name,
+                                dtstart: eventStart,
+                                dtend: eventEnd,
+                                type,
+                                description,
+                                uid: `manual-${crypto.randomUUID()}`,
+                                is_recurring: true,
+                                recurring_days: recurring_days,
+                                series_id,
+                                recur_until,
+                                series_start_date
+                            });
+                        }
+                        currentDate.setDate(currentDate.getDate() + 1);
+                    }
+
+                    // Update the state with the other events plus the new series events
+                    setEvents([...otherEvents, ...newSeriesEvents]);
+                    
                     setEditingEvent(null);
                     setIsAddModalOpen(false);
                     return;
                 }
+
                  try {
                     const response = await fetch(`${API_ENDPOINT}?seriesId=${editedEvent.series_id}`, {
                         method: 'PUT',
@@ -1470,6 +1533,7 @@
                         onUpdateEvent={handleUpdateEvent}
                         onUpdateSeries={handleUpdateSeries}
                         onCancelEdit={handleCancelEdit}
+                        isLocalOrPreview={isLocalOrPreview}
                     />
                 </div>
             );
