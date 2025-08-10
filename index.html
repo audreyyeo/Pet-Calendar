@@ -718,7 +718,6 @@
                         setEndDate(formatDateToYYYYMMDD(end));
                         setPickUpTime(`${end.getHours().toString().padStart(2, '0')}:${end.getMinutes().toString().padStart(2, '0')}`);
                     } else {
-                        // FIX: Always set the date to the specific instance's date
                         setDate(formatDateToYYYYMMDD(start));
                         setTime(`${start.getHours().toString().padStart(2, '0')}:${start.getMinutes().toString().padStart(2, '0')}`);
                         const durationMinutes = (end - start) / 60000;
@@ -729,7 +728,10 @@
                     setRecurringDays(eventToEdit.recurring_days || { 0: false, 1: false, 2: false, 3: false, 4: false, 5: false, 6: false });
                     
                     if (eventToEdit.is_recurring && eventToEdit.recur_until) {
-                        setRecurUntil(eventToEdit.recur_until);
+                        // FIX: Ensure the date string is correctly formatted for the input
+                        // This handles cases where the date is a full ISO string from the DB
+                        const recurUntilDate = new Date(eventToEdit.recur_until);
+                        setRecurUntil(formatDateToYYYYMMDD(recurUntilDate));
                     } else {
                         const defaultRecurDate = new Date();
                         defaultRecurDate.setDate(defaultRecurDate.getDate() + 7);
@@ -760,7 +762,16 @@
                 if (isEditMode) {
                     // Handle update for the entire series
                     if (eventToEdit.is_recurring && updateScope === 'series') {
-                        const updatedSeriesData = { name, time, duration, recurring_days: recurringDays, recur_until: recurUntil, description };
+                        const updatedSeriesData = { 
+                            name, 
+                            time, 
+                            duration, 
+                            recurring_days: recurringDays, 
+                            recur_until: recurUntil, 
+                            description,
+                            // FIX: Pass the original start date to the backend for regeneration
+                            series_start_date: eventToEdit.series_start_date
+                        };
                         onUpdateSeries(eventToEdit, { ...updatedSeriesData, type: eventToEdit.type });
                         resetForm();
                         return;
@@ -1212,14 +1223,13 @@
 
                     // Generate new events based on updatedData
                     let newSeriesEvents = [];
-                    const { name, time, duration, recurring_days, recur_until, description, type } = updatedData;
+                    const { name, time, duration, recurring_days, recur_until, description, type, series_start_date } = updatedData;
                     
                     let selectedDays = Object.keys(recurring_days).filter(day => recurring_days[day]).map(Number);
                     if (selectedDays.length === 0) {
                         selectedDays = [0, 1, 2, 3, 4, 5, 6];
                     }
 
-                    const series_start_date = editedEvent.series_start_date;
                     let currentDate = parseDateTime(series_start_date);
                     const untilDate = parseDateTime(recur_until, '23:59');
                     const series_id = editedEvent.series_id; // Reuse the same series_id
