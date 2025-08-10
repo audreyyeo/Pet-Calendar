@@ -730,9 +730,9 @@
                     setRecurringDays(eventToEdit.recurring_days || { 0: false, 1: false, 2: false, 3: false, 4: false, 5: false, 6: false });
                     
                     if (eventToEdit.is_recurring && eventToEdit.recur_until) {
-                        // FIX: Use the timezone-safe parseDateTime function to correctly interpret the date string
-                        const recurUntilDate = parseDateTime(eventToEdit.recur_until);
-                        setRecurUntil(formatDateToYYYYMMDD(recurUntilDate));
+                        const recurUntilDate = new Date(eventToEdit.recur_until);
+                        const timezoneCorrectedDate = new Date(recurUntilDate.getUTCFullYear(), recurUntilDate.getUTCMonth(), recurUntilDate.getUTCDate());
+                        setRecurUntil(formatDateToYYYYMMDD(timezoneCorrectedDate));
                     } else {
                         const defaultRecurDate = new Date();
                         defaultRecurDate.setDate(defaultRecurDate.getDate() + 7);
