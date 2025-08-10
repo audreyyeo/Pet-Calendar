@@ -5,32 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pet Calendar</title>
 
-    <!-- ===== PWA & ICON CONFIGURATION ===== -->
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#141414">
     
-    <!-- Standard favicons for browsers -->
     <link rel="icon" type="image/png+xml" href="./android-chrome-512x512.png" />
     <link rel="icon" type="image/svg+xml" sizes="16x16" href="./favicon-16x16.svg" />
     <link rel="icon" type="image/svg+xml" sizes="32x32" href="./favicon-32x32.svg" />
 
-    <!-- Apple Touch Icon for iOS devices -->
     <link rel="apple-touch-icon" href="./apple-touch-icon.svg" />
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Pet Calendar">
 
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- React Libraries -->
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     
-    <!-- Babel for JSX compilation -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@100;400&display=swap" rel="stylesheet">
@@ -1265,7 +1258,7 @@
                     const response = await fetch(`${API_ENDPOINT}?seriesId=${editedEvent.series_id}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ ...updatedData, type: editedEvent.type }),
+                        body: JSON.stringify(updatedData),
                     });
                     if (!response.ok) throw new Error('Failed to update series');
                     await fetchEvents();
