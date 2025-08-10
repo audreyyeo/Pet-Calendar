@@ -757,7 +757,7 @@
                     // Handle update for the entire series
                     if (eventToEdit.is_recurring && updateScope === 'series') {
                         const updatedSeriesData = { 
-                            name, 
+                            summary: name, 
                             time, 
                             duration, 
                             recurring_days: recurringDays, 
@@ -1214,7 +1214,7 @@
 
                     // Generate new events based on updatedData
                     let newSeriesEvents = [];
-                    const { name, time, duration, recurring_days, recur_until, description, type, series_start_date } = updatedData;
+                    const { summary, time, duration, recurring_days, recur_until, description, type, series_start_date } = updatedData;
                     
                     let selectedDays = Object.keys(recurring_days).filter(day => recurring_days[day]).map(Number);
                     if (selectedDays.length === 0) {
@@ -1230,7 +1230,7 @@
                             const eventStart = parseDateTime(formatDateToYYYYMMDD(currentDate), time);
                             const eventEnd = new Date(eventStart.getTime() + duration * 60000);
                             newSeriesEvents.push({
-                                summary: name,
+                                summary: summary,
                                 dtstart: eventStart,
                                 dtend: eventEnd,
                                 type,
