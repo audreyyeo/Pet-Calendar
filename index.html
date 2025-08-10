@@ -763,9 +763,10 @@
                             recurring_days: recurringDays, 
                             recur_until: recurUntil, 
                             description,
-                            series_start_date: eventToEdit.series_start_date
+                            series_start_date: eventToEdit.series_start_date,
+                            type: eventToEdit.type
                         };
-                        onUpdateSeries(eventToEdit, { ...updatedSeriesData, type: eventToEdit.type });
+                        onUpdateSeries(eventToEdit, updatedSeriesData);
                         resetForm();
                         return;
                     }
@@ -815,7 +816,8 @@
                     while (currentDate <= untilDate) {
                         if (selectedDays.includes(currentDate.getDay())) {
                             const eventStart = parseDateTime(formatDateToYYYYMMDD(currentDate), time);
-                            const eventEnd = new Date(eventStart.getTime() + duration * 60000);
+                            const finalDuration = type === 'meet-and-greet' ? 30 : duration;
+                            const eventEnd = new Date(eventStart.getTime() + finalDuration * 60000);
                             newEvents.push({ summary: name, dtstart: eventStart.toISOString(), dtend: eventEnd.toISOString(), type, description, uid: `manual-${crypto.randomUUID()}`, is_recurring: true, recurring_days: hasSelectedDays ? recurringDays : null, series_id, recur_until: recurUntil, series_start_date });
                         }
                         currentDate.setDate(currentDate.getDate() + 1);
@@ -1209,13 +1211,9 @@
                 if (isLocalOrPreview) {
                     console.log("Local mode: Updating series in state.", updatedData);
 
-                    // Remove all old events from this series
                     const otherEvents = events.filter(e => e.series_id !== editedEvent.series_id);
-
-                    // Generate new events based on updatedData
                     let newSeriesEvents = [];
                     const { summary, time, duration, recurring_days, recur_until, description, type, series_start_date } = updatedData;
-                    
                     let selectedDays = Object.keys(recurring_days).filter(day => recurring_days[day]).map(Number);
                     if (selectedDays.length === 0) {
                         selectedDays = [0, 1, 2, 3, 4, 5, 6];
@@ -1223,12 +1221,13 @@
 
                     let currentDate = parseDateTime(series_start_date);
                     const untilDate = parseDateTime(recur_until, '23:59');
-                    const series_id = editedEvent.series_id; // Reuse the same series_id
+                    const series_id = editedEvent.series_id;
 
                     while (currentDate <= untilDate) {
                         if (selectedDays.includes(currentDate.getDay())) {
                             const eventStart = parseDateTime(formatDateToYYYYMMDD(currentDate), time);
-                            const eventEnd = new Date(eventStart.getTime() + duration * 60000);
+                            const finalDuration = type === 'meet-and-greet' ? 30 : duration;
+                            const eventEnd = new Date(eventStart.getTime() + finalDuration * 60000);
                             newSeriesEvents.push({
                                 summary: summary,
                                 dtstart: eventStart,
@@ -1245,22 +1244,31 @@
                         }
                         currentDate.setDate(currentDate.getDate() + 1);
                     }
-
-                    // Update the state with the other events plus the new series events
                     setEvents([...otherEvents, ...newSeriesEvents]);
-                    
                     setEditingEvent(null);
                     setIsAddModalOpen(false);
                     return;
                 }
 
-                 try {
-                    const response = await fetch(`${API_ENDPOINT}?seriesId=${editedEvent.series_id}`, {
+                try {
+                    const url = `${API_ENDPOINT}?seriesId=${editedEvent.series_id}`;
+                    const body = updatedData;
+
+                    console.log("Attempting to update series. URL:", url);
+                    console.log("Sending this data in the body:", JSON.stringify(body, null, 2));
+
+                    const response = await fetch(url, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(updatedData),
+                        body: JSON.stringify(body),
                     });
-                    if (!response.ok) throw new Error('Failed to update series');
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        console.error("Server responded with an error:", response.status, errorText);
+                        throw new Error(`Failed to update series. Server status: ${response.status}`);
+                    }
+                    
                     await fetchEvents();
                     setEditingEvent(null);
                     setIsAddModalOpen(false);
