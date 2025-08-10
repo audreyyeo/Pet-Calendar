@@ -1,29 +1,51 @@
 // netlify/functions/events.js
 
-// Import the node-postgres library, which is the driver for connecting to PostgreSQL.
 const { Pool } = require('pg');
 
-// Create a new Pool instance to manage connections to your Neon database.
-// It automatically reads the connection details from the DATABASE_URL environment
-// variable you set in your Netlify settings.
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
-    rejectUnauthorized: false // Required for connecting to Neon
+    rejectUnauthorized: false
   }
 });
 
-// This is the main handler function that Netlify will run when your
-// frontend calls `/.netlify/functions/events`.
+// --- HELPER FUNCTIONS ---
+// These helpers are added to correctly calculate dates on the server,
+// mirroring the logic from your frontend code.
+
+/**
+ * Formats a Date object into a 'YYYY-MM-DD' string.
+ * @param {Date} date The date to format.
+ * @returns {string} The formatted date string.
+ */
+const formatDateToYYYYMMDD = (date) => {
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
+/**
+ * Parses a date string and optional time string into a Date object.
+ * @param {string} dateString The date string in 'YYYY-MM-DD' format.
+ * @param {string} [timeString='00:00'] The time string in 'HH:MM' format.
+ * @returns {Date} The parsed Date object.
+ */
+const parseDateTime = (dateString, timeString = '00:00') => {
+    const [year, month, day] = dateString.split('-').map(Number);
+    const [hours, minutes] = timeString.split(':').map(Number);
+    // Note: The month is 0-indexed in JavaScript's Date constructor.
+    return new Date(year, month - 1, day, hours, minutes);
+};
+
+
+// --- MAIN HANDLER ---
 exports.handler = async function(event, context) {
-  // Determine the request method (GET, POST, PUT, DELETE)
   const httpMethod = event.httpMethod;
-  // Get any query parameters from the URL (e.g., ?uid=123)
   const params = event.queryStringParameters;
 
   try {
     // --- HANDLE GET REQUESTS ---
-    // This block runs when the app loads to fetch all existing events.
     if (httpMethod === 'GET') {
       const { rows } = await pool.query('SELECT * FROM events ORDER BY dtstart ASC;');
       return {
@@ -34,22 +56,16 @@ exports.handler = async function(event, context) {
     }
 
     // --- HANDLE POST REQUESTS ---
-    // This block runs when you add a new event.
     if (httpMethod === 'POST') {
       const events = JSON.parse(event.body);
-      
-      // A transaction ensures that if you add a recurring series, either all
-      // events are added successfully, or none are. This prevents partial data.
       const client = await pool.connect();
       try {
-        await client.query('BEGIN'); // Start transaction
+        await client.query('BEGIN');
         for (const ev of events) {
           const query = `
             INSERT INTO events (uid, summary, type, dtstart, dtend, description, is_recurring, recurring_days, series_id, recur_until, series_start_date)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);
           `;
-          // Using parameterized queries ($1, $2, etc.) is a security best practice
-          // to prevent SQL injection attacks.
           const values = [
             ev.uid,
             ev.summary,
@@ -57,64 +73,95 @@ exports.handler = async function(event, context) {
             ev.dtstart,
             ev.dtend,
             ev.description || null,
-            // FIX: Changed from camelCase (isRecurring) to snake_case (is_recurring) to match frontend
             ev.is_recurring || false,
-            // FIX: Changed to snake_case to match frontend
             ev.recurring_days ? JSON.stringify(ev.recurring_days) : null,
-            // FIX: Changed to snake_case to match frontend
             ev.series_id || null,
-            // FIX: Changed to snake_case to match frontend
             ev.recur_until || null,
-            // FIX: Changed to snake_case to match frontend
             ev.series_start_date || null
           ];
           await client.query(query, values);
         }
-        await client.query('COMMIT'); // Finalize transaction
+        await client.query('COMMIT');
         return {
-          statusCode: 201, // 201 means "Created"
+          statusCode: 201,
           body: JSON.stringify({ message: 'Events added successfully' }),
         };
       } catch (e) {
-        await client.query('ROLLBACK'); // Undo transaction on error
+        await client.query('ROLLBACK');
         throw e;
       } finally {
-        client.release(); // Release the client back to the pool
+        client.release();
       }
     }
 
     // --- HANDLE PUT REQUESTS ---
-    // This block runs when you edit an existing event.
     if (httpMethod === 'PUT') {
         const eventData = JSON.parse(event.body);
         
-        // Handle updates for an entire series
+        // ========================================================================
+        // --- FIX: REWRITTEN LOGIC FOR UPDATING AN ENTIRE RECURRING SERIES ---
+        // The original code was trying to run a single UPDATE, which is incorrect.
+        // The correct logic is to delete the old series and regenerate all events.
+        // ========================================================================
         if (params.seriesId) {
-             const query = `
-                UPDATE events 
-                SET summary = $1, type = $2, dtstart = $3, dtend = $4, description = $5, is_recurring = $6, recurring_days = $7, recur_until = $8, series_start_date = $9
-                WHERE series_id = $10;
-            `;
-            const values = [
-                eventData.summary,
-                eventData.type,
-                eventData.dtstart,
-                eventData.dtend,
-                eventData.description || null,
-                true, // It's a series, so this is always true
-                eventData.recurring_days ? JSON.stringify(eventData.recurring_days) : null,
-                eventData.recur_until || null,
-                eventData.series_start_date || null,
-                params.seriesId
-            ];
-            await pool.query(query, values);
-            return {
-                statusCode: 200,
-                body: JSON.stringify({ message: 'Event series updated successfully' }),
-            };
+            const client = await pool.connect();
+            try {
+                await client.query('BEGIN'); // Start transaction
+
+                // 1. Delete all old events belonging to this series
+                await client.query('DELETE FROM events WHERE series_id = $1;', [params.seriesId]);
+
+                // 2. Regenerate new events based on the updated data from the frontend
+                const { summary, time, duration, recurring_days, recur_until, description, type, series_start_date } = eventData;
+                let selectedDays = Object.keys(recurring_days).filter(day => recurring_days[day]).map(Number);
+                if (selectedDays.length === 0) {
+                    selectedDays = [0, 1, 2, 3, 4, 5, 6]; // Default to daily if none are selected
+                }
+                
+                let currentDate = parseDateTime(series_start_date);
+                const untilDate = parseDateTime(recur_until);
+
+                while (currentDate <= untilDate) {
+                    if (selectedDays.includes(currentDate.getDay())) {
+                        const eventStart = parseDateTime(formatDateToYYYYMMDD(currentDate), time);
+                        const eventEnd = new Date(eventStart.getTime() + duration * 60000);
+                        
+                        const insertQuery = `
+                            INSERT INTO events (uid, summary, type, dtstart, dtend, description, is_recurring, recurring_days, series_id, recur_until, series_start_date)
+                            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);
+                        `;
+                        const insertValues = [
+                            `manual-${crypto.randomUUID()}`, // Generate a new unique ID for the event instance
+                            summary,
+                            type,
+                            eventStart.toISOString(),
+                            eventEnd.toISOString(),
+                            description || null,
+                            true,
+                            JSON.stringify(recurring_days),
+                            params.seriesId, // Use the original series ID
+                            recur_until,
+                            series_start_date
+                        ];
+                        await client.query(insertQuery, insertValues);
+                    }
+                    currentDate.setDate(currentDate.getDate() + 1);
+                }
+
+                await client.query('COMMIT'); // Finalize transaction
+                return {
+                    statusCode: 200,
+                    body: JSON.stringify({ message: 'Event series updated successfully' }),
+                };
+            } catch (e) {
+                await client.query('ROLLBACK'); // Undo all changes if an error occurs
+                throw e; // This will trigger the main catch block below
+            } finally {
+                client.release(); // Release the client back to the pool
+            }
         }
         
-        // Handle updates for a single event
+        // --- Logic for updating a single event ---
         if (params.uid) {
             const query = `
                 UPDATE events 
@@ -127,7 +174,6 @@ exports.handler = async function(event, context) {
                 eventData.dtstart,
                 eventData.dtend,
                 eventData.description || null,
-                // FIX: Changed from camelCase to snake_case to match frontend
                 eventData.is_recurring || false,
                 eventData.recurring_days ? JSON.stringify(eventData.recurring_days) : null,
                 eventData.series_id || null,
@@ -144,9 +190,7 @@ exports.handler = async function(event, context) {
     }
 
     // --- HANDLE DELETE REQUESTS ---
-    // This block runs when you remove an event or a series.
     if (httpMethod === 'DELETE') {
-      // Delete a single event
       if (params.uid) {
         await pool.query('DELETE FROM events WHERE uid = $1;', [params.uid]);
         return {
@@ -154,7 +198,6 @@ exports.handler = async function(event, context) {
           body: JSON.stringify({ message: `Event ${params.uid} deleted.` }),
         };
       }
-      // Delete an entire recurring series
       if (params.seriesId) {
         await pool.query('DELETE FROM events WHERE series_id = $1;', [params.seriesId]);
         return {
@@ -164,16 +207,13 @@ exports.handler = async function(event, context) {
       }
     }
 
-    // If the request uses a method not handled above (e.g., PATCH)
     return {
       statusCode: 405,
       body: 'Method Not Allowed',
     };
 
   } catch (error) {
-    // If any error occurs in the `try` block, this will catch it
-    // and return a generic server error message.
-    console.error(error); // Log the actual error for debugging in Netlify
+    console.error(error);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: 'Internal Server Error' }),
