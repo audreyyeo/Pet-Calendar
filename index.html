@@ -152,6 +152,8 @@
         };
 
         const parseDateTime = (dateString, timeString = '00:00') => {
+            // This function correctly handles YYYY-MM-DD strings by splitting them,
+            // which avoids the UTC timezone interpretation issue.
             const [year, month, day] = dateString.split('-').map(Number);
             const [hours, minutes] = timeString.split(':').map(Number);
             return new Date(year, month - 1, day, hours, minutes);
@@ -728,9 +730,8 @@
                     setRecurringDays(eventToEdit.recurring_days || { 0: false, 1: false, 2: false, 3: false, 4: false, 5: false, 6: false });
                     
                     if (eventToEdit.is_recurring && eventToEdit.recur_until) {
-                        // FIX: Ensure the date string is correctly formatted for the input
-                        // This handles cases where the date is a full ISO string from the DB
-                        const recurUntilDate = new Date(eventToEdit.recur_until);
+                        // FIX: Use the timezone-safe parseDateTime function to correctly interpret the date string
+                        const recurUntilDate = parseDateTime(eventToEdit.recur_until);
                         setRecurUntil(formatDateToYYYYMMDD(recurUntilDate));
                     } else {
                         const defaultRecurDate = new Date();
@@ -769,7 +770,6 @@
                             recurring_days: recurringDays, 
                             recur_until: recurUntil, 
                             description,
-                            // FIX: Pass the original start date to the backend for regeneration
                             series_start_date: eventToEdit.series_start_date
                         };
                         onUpdateSeries(eventToEdit, { ...updatedSeriesData, type: eventToEdit.type });
@@ -790,8 +790,6 @@
                         updatedEvent.dtstart = eventStart.toISOString();
                         updatedEvent.dtend = eventEnd.toISOString();
                         
-                        // If we're updating a single instance of a recurring event,
-                        // we detach it from the series by removing recurrence info.
                         if (eventToEdit.is_recurring) {
                             updatedEvent.is_recurring = false;
                             delete updatedEvent.series_id;
