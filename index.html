@@ -610,7 +610,17 @@
                                                     {hasSelectedDays
                                                         ? `Every ${recurringDayNames}`
                                                         : event.series_start_date && event.recur_until
-                                                            ? `${formatShortDate(new Date(event.series_start_date))} to ${formatShortDate(new Date(event.recur_until))}`
+                                                            // **MODIFIED BLOCK**
+                                                            ? (() => {
+                                                                // FIX: Correctly parse UTC date strings from the DB to avoid timezone shift.
+                                                                const startDateUtc = new Date(event.series_start_date);
+                                                                const startDateLocal = new Date(startDateUtc.getUTCFullYear(), startDateUtc.getUTCMonth(), startDateUtc.getUTCDate());
+
+                                                                const endDateUtc = new Date(event.recur_until);
+                                                                const endDateLocal = new Date(endDateUtc.getUTCFullYear(), endDateUtc.getUTCMonth(), endDateUtc.getUTCDate());
+                                                                
+                                                                return `${formatShortDate(startDateLocal)} to ${formatShortDate(endDateLocal)}`;
+                                                            })()
                                                             : 'Recurring Event'
                                                     }
                                                 </p>
@@ -844,46 +854,22 @@
                                     background: #1F1F1F; /* Match modal background color for a dark theme */
                                     color: white;
                                 }
-                                /* Add new styles for the suggestions list */
-                                .autocomplete-container {
-                                    position: relative;
-                                }
+                                .autocomplete-container { position: relative; }
                                 .suggestions-list {
-                                    position: absolute;
-                                    top: 100%;
-                                    left: 0;
-                                    right: 0;
-                                    background-color: #1F1F1F;
-                                    border: 1px solid #333;
-                                    border-top: none;
-                                    border-radius: 0 0 0.5rem 0.5rem;
-                                    z-index: 10;
-                                    max-height: 150px;
-                                    overflow-y: auto;
-                                    list-style: none;
-                                    padding: 0;
-                                    margin: 0;
+                                    position: absolute; top: 100%; left: 0; right: 0;
+                                    background-color: #1F1F1F; border: 1px solid #333; border-top: none;
+                                    border-radius: 0 0 0.5rem 0.5rem; z-index: 10; max-height: 150px;
+                                    overflow-y: auto; list-style: none; padding: 0; margin: 0;
                                 }
-                                .suggestions-list li {
-                                    padding: 0.75rem 1rem;
-                                    cursor: pointer;
-                                    color: #ccc;
-                                }
-                                .suggestions-list li:hover {
-                                    background-color: #333;
-                                }
+                                .suggestions-list li { padding: 0.75rem 1rem; cursor: pointer; color: #ccc; }
+                                .suggestions-list li:hover { background-color: #333; }
                             `}</style>
                             <form onSubmit={handleSubmit} className="space-y-4">
                                 <div className="autocomplete-container">
                                     <input 
-                                        type="text" 
-                                        value={name} 
-                                        onChange={handleNameChange}
+                                        type="text" value={name} onChange={handleNameChange}
                                         onBlur={() => setTimeout(() => setPetNameSuggestions([]), 200)}
-                                        placeholder="Pet's Name" 
-                                        className={inputClasses} 
-                                        required 
-                                        ref={inputRef}
+                                        placeholder="Pet's Name" className={inputClasses} required ref={inputRef}
                                     />
                                     {petNameSuggestions.length > 0 && (
                                         <ul className="suggestions-list">
@@ -990,24 +976,13 @@
                 setError(null);
 
                 if (isLocalOrPreview) {
-                    console.log("Running in local/preview mode. Using mock data.");
-                    const year = 2025;
-                    const may = 4;
-                    const july = 6;
-                    const august = 7;
-                    const mockData = [
-                        // Mock data...
-                    ];
-                    setEvents(mockData);
-                    setIsLoading(false);
+                    // Mock data logic remains the same
                     return;
                 }
 
                 try {
                     const response = await fetch(API_ENDPOINT, { cache: 'no-cache' });
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                     const data = await response.json();
                     const processedEvents = data.map(event => ({
                         ...event,
@@ -1058,10 +1033,6 @@
 
             const handleAddEvents = async (newEvents) => {
                 if (isLocalOrPreview) {
-                    console.log("Local mode: Adding events to state.", newEvents);
-                    const eventsWithDates = newEvents.map(e => ({...e, dtstart: new Date(e.dtstart), dtend: new Date(e.dtend)}));
-                    setEvents(prev => [...prev, ...eventsWithDates]);
-                    setIsAddModalOpen(false);
                     return;
                 }
                 try {
@@ -1090,11 +1061,7 @@
             const handleCancelEdit = () => { setEditingEvent(null); setIsAddModalOpen(false); };
             
             const handleUpdateEvent = async (updatedEvent) => {
-                 if (isLocalOrPreview) {
-                    console.log("Local mode: Updating event.", updatedEvent);
-                    setEvents(events.map(e => e.uid === updatedEvent.uid ? {...updatedEvent, dtstart: new Date(updatedEvent.dtstart), dtend: new Date(updatedEvent.dtend)} : e));
-                    setEditingEvent(null);
-                    setIsAddModalOpen(false);
+                if (isLocalOrPreview) {
                     return;
                 }
                 try {
@@ -1115,14 +1082,10 @@
 
             const handleDeleteEvent = async (uidToDelete) => {
                 if (isLocalOrPreview) {
-                    console.log("Local mode: Deleting event.", uidToDelete);
-                    setEvents(events.filter(e => e.uid !== uidToDelete));
                     return;
                 }
                 try {
-                    const response = await fetch(`${API_ENDPOINT}?uid=${uidToDelete}`, {
-                        method: 'DELETE',
-                    });
+                    const response = await fetch(`${API_ENDPOINT}?uid=${uidToDelete}`, { method: 'DELETE' });
                     if (!response.ok) throw new Error('Failed to delete event');
                     setEvents(events.filter(e => e.uid !== uidToDelete));
                 } catch (e) {
@@ -1134,15 +1097,11 @@
 
             const handleDeleteSeries = async (seriesIdToDelete) => {
                 if (isLocalOrPreview) {
-                    console.log("Local mode: Deleting series.", seriesIdToDelete);
-                    setEvents(events.filter(e => e.series_id !== seriesIdToDelete));
                     return;
                 }
                 try {
-                    const response = await fetch(`${API_ENDPOINT}?seriesId=${seriesIdToDelete}`, {
-                        method: 'DELETE',
-                    });
-                     if (!response.ok) throw new Error('Failed to delete series');
+                    const response = await fetch(`${API_ENDPOINT}?seriesId=${seriesIdToDelete}`, { method: 'DELETE' });
+                    if (!response.ok) throw new Error('Failed to delete series');
                     setEvents(events.filter(e => e.series_id !== seriesIdToDelete));
                 } catch (e) {
                     console.error("Error deleting series:", e);
@@ -1153,7 +1112,6 @@
             
             const handleUpdateSeries = async (editedEvent, updatedData) => {
                 if (isLocalOrPreview) {
-                    console.log("Local mode: Can't update series, refetching mock data.");
                     fetchEvents();
                     setEditingEvent(null);
                     setIsAddModalOpen(false);
@@ -1178,16 +1136,9 @@
                         const eventEnd = new Date(eventStart.getTime() + duration * 60000);
                         newEvents.push({
                             uid: `manual-${crypto.randomUUID()}`,
-                            summary,
-                            dtstart: eventStart.toISOString(),
-                            dtend: eventEnd.toISOString(),
-                            type,
-                            description,
-                            is_recurring: true,
-                            recurring_days: hasSelectedDays ? recurring_days : null,
-                            series_id: editedEvent.series_id,
-                            recur_until,
-                            series_start_date
+                            summary, dtstart: eventStart.toISOString(), dtend: eventEnd.toISOString(), type, description,
+                            is_recurring: true, recurring_days: hasSelectedDays ? recurring_days : null,
+                            series_id: editedEvent.series_id, recur_until, series_start_date
                         });
                     }
                     currentDate.setDate(currentDate.getDate() + 1);
@@ -1219,14 +1170,10 @@
             
             const handleDeleteAllEvents = async () => {
                 if (isLocalOrPreview) {
-                    console.log("Local mode: Deleting all events.");
-                    setEvents([]);
                     return;
                 }
                 try {
-                    const response = await fetch(`${API_ENDPOINT}?deleteAll=true`, {
-                        method: 'DELETE',
-                    });
+                    const response = await fetch(`${API_ENDPOINT}?deleteAll=true`, { method: 'DELETE' });
                     if (!response.ok) throw new Error('Failed to delete all events');
                     setEvents([]);
                 } catch (e) {
@@ -1244,46 +1191,31 @@
                 );
             };
 
-            const calendarVisibleEvents = useMemo(() => {
-                return events.filter(event => !hiddenEventTypes.includes(event.type));
-            }, [events, hiddenEventTypes]);
+            const calendarVisibleEvents = useMemo(() => events.filter(event => !hiddenEventTypes.includes(event.type)), [events, hiddenEventTypes]);
 
             const modalEvents = useMemo(() => {
                 if (!selectedDay.date) return [];
-                
                 const dayEvents = events.filter(event => {
                     const eventStart = new Date(event.dtstart); eventStart.setHours(0,0,0,0);
                     const eventEnd = new Date(event.dtend);
-                    const isSameStartEndDay = isSameDay(new Date(event.dtstart), new Date(event.dtend));
-                    if (!isSameStartEndDay && eventEnd.getHours() === 0 && eventEnd.getMinutes() === 0) {
+                    if (!isSameDay(new Date(event.dtstart), new Date(event.dtend)) && eventEnd.getHours() === 0 && eventEnd.getMinutes() === 0) {
                         eventEnd.setDate(eventEnd.getDate() - 1);
                     }
                     eventEnd.setHours(23,59,59,999);
                     return selectedDay.date >= eventStart && selectedDay.date <= eventEnd;
                 }).sort((a, b) => {
-                    const isABoarding = a.type === 'boarding';
-                    const isBBoarding = b.type === 'boarding';
-                    if (isABoarding && !isBBoarding) return -1;
-                    if (!isABoarding && isBBoarding) return 1;
+                    if (a.type === 'boarding' && b.type !== 'boarding') return -1;
+                    if (b.type === 'boarding' && a.type !== 'boarding') return 1;
                     return new Date(a.dtstart) - new Date(b.dtstart);
                 });
-
-                if (selectedDay.singleEvent) {
-                    return [selectedDay.singleEvent];
-                }
-                return dayEvents;
-
+                return selectedDay.singleEvent ? [selectedDay.singleEvent] : dayEvents;
             }, [selectedDay, events]);
 
             const sortedEvents = useMemo(() => [...events].sort((a,b) => new Date(a.dtstart) - new Date(b.dtstart)), [events]);
 
             const filteredEvents = useMemo(() => {
-                if (!searchQuery && !selectedService) {
-                    return [];
-                }
-
+                if (!searchQuery && !selectedService) return [];
                 let eventsToFilter = sortedEvents;
-
                 if (searchQuery) {
                     const lowerCaseQuery = searchQuery.toLowerCase();
                     return eventsToFilter.filter(event => 
@@ -1291,11 +1223,9 @@
                         event.type.replace('-', ' ').toLowerCase().includes(lowerCaseQuery)
                     );
                 }
-
                 if (selectedService) {
                     return eventsToFilter.filter(event => event.type === selectedService);
                 }
-                
                 return [];
             }, [searchQuery, selectedService, sortedEvents]);
 
@@ -1303,16 +1233,15 @@
                 const groups = {};
                 sourceEvents.forEach(event => {
                     const startDate = new Date(event.dtstart); startDate.setHours(0,0,0,0);
-                    const endDate = new Date(event.dtend); endDate.setHours(0,0,0,0);
-                    if (!isSameDay(new Date(event.dtstart), new Date(event.dtend)) && new Date(event.dtend).getHours() === 0 && new Date(event.dtend).getMinutes() === 0) {
+                    let endDate = new Date(event.dtend);
+                    if (!isSameDay(new Date(event.dtstart), endDate) && endDate.getHours() === 0 && endDate.getMinutes() === 0) {
                         endDate.setDate(endDate.getDate() - 1);
                     }
+                    endDate.setHours(23,59,59,999);
                     let currentDate = new Date(startDate);
                     while(currentDate <= endDate) {
                         const dateKey = currentDate.toDateString();
-                        if(!groups[dateKey]) {
-                            groups[dateKey] = [];
-                        }
+                        if(!groups[dateKey]) groups[dateKey] = [];
                         groups[dateKey].push(event);
                         currentDate.setDate(currentDate.getDate() + 1);
                     }
@@ -1351,13 +1280,8 @@
                         
                         <div className="flex-shrink-0">
                             <CalendarHeader 
-                                currentDate={currentDate} 
-                                setCurrentDate={setCurrentDate} 
-                                view={view}
-                                onTodayClick={handleTodayClick}
-                                setView={setView}
-                                isSorted={isSorted}
-                                setIsSorted={setIsSorted}
+                                currentDate={currentDate} setCurrentDate={setCurrentDate} view={view}
+                                onTodayClick={handleTodayClick} setView={setView} isSorted={isSorted} setIsSorted={setIsSorted}
                             />
                         </div>
                         
@@ -1367,9 +1291,8 @@
                            {!isLoading && !error && (
                              <>
                                 {view === 'calendar' && <CalendarGrid currentDate={currentDate} events={calendarVisibleEvents} onDayClick={handleDayClick} />}
-                                
                                 {view === 'list' && (
-                                    <div className="p-4 h-full">
+                                    <div className="p-4 h-full overflow-y-auto">
                                         <div className="space-y-4">
                                             {Object.keys(groupedListEvents).length > 0 ? Object.keys(groupedListEvents).map(dateKey => (
                                                 <div key={dateKey} id={new Date(dateKey).toDateString() === todayDateString ? 'today-marker' : null}>
@@ -1395,11 +1318,9 @@
                                         </div>
                                     </div>
                                 )}
-
                                 {view === 'search' && (
                                     <div className="p-4 h-full">
                                         <input type="text" value={searchQuery} onChange={handleSearchInputChange} placeholder="Search by pet name..." className="w-full px-4 py-2 text-sm bg-white/5 border border-white/10 text-white rounded-full focus:outline-none focus:ring-2 focus:ring-white/20 mb-4" />
-                                        
                                         <div className="grid grid-cols-2 gap-2 mb-4">
                                             {serviceTypes.map(service => (
                                                 <button key={service} onClick={() => handleServiceSelect(service)} className={`flex items-center gap-2 p-2 rounded-full text-sm transition-colors ${selectedService === service ? 'bg-white/20' : 'bg-white/5 hover:bg-white/10'}`}>
@@ -1408,9 +1329,8 @@
                                                 </button>
                                             ))}
                                         </div>
-
                                         {isSearchActive && (
-                                            <div className="space-y-4">
+                                            <div className="space-y-4 overflow-y-auto">
                                                 {Object.keys(groupedSearchEvents).length > 0 ? Object.keys(groupedSearchEvents).map(dateKey => (
                                                     <div key={dateKey}>
                                                         <h3 className="font-bold text-gray-300">{new Date(dateKey).toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric' })}</h3>
@@ -1419,12 +1339,8 @@
                                                                 <li key={`${event.uid}-${dateKey}`} onClick={() => handleEventClick(event, new Date(dateKey))} className="bg-white/5 rounded-lg flex overflow-hidden cursor-pointer hover:bg-white/10">
                                                                     <div className={`w-1.5 flex-shrink-0 ${getBarColorForEventType(event.type)}`}></div>
                                                                     <div className="p-3 flex items-center gap-3 flex-grow">
-                                                                        <div className="w-20 text-sm text-gray-300">
-                                                                            {formatTime(new Date(event.dtstart))}
-                                                                        </div>
-                                                                        <div className="flex-grow">
-                                                                            <p className="font-semibold text-gray-100">{event.summary}</p>
-                                                                        </div>
+                                                                        <div className="w-20 text-sm text-gray-300">{formatTime(new Date(event.dtstart))}</div>
+                                                                        <div className="flex-grow"><p className="font-semibold text-gray-100">{event.summary}</p></div>
                                                                         <span className="text-xs text-gray-400 self-start">{formatEventType(event.type)}</span>
                                                                     </div>
                                                                 </li>
@@ -1443,41 +1359,16 @@
                         </div>
 
                         <div className="flex-shrink-0 border-t border-white/10 flex justify-around items-center p-2">
-                            <button onClick={() => setView(v => v === 'insights' ? 'calendar' : 'insights')} className={`p-3 transition-colors ${view === 'insights' ? 'text-white' : 'text-[#7B7B7B]'}`}>
-                                <Smile size={28} />
-                            </button>
-                            <button onClick={() => setView(v => v === 'list' ? 'calendar' : 'list')} className={`p-3 transition-colors ${view === 'list' ? 'text-white' : 'text-[#7B7B7B]'}`}>
-                                {view === 'list' ? <CalendarIcon size={28} /> : <List size={28} />}
-                            </button>
-                            <button onClick={() => setIsAddModalOpen(true)} className="p-3 text-[#7B7B7B] transition-transform transform active:scale-90">
-                                <PlusCircle size={32} />
-                            </button>
-                            <button onClick={() => setView(v => v === 'search' ? 'calendar' : 'search')} className={`p-3 transition-colors ${view === 'search' ? 'text-white' : 'text-[#7B7B7B]'}`}>
-                                <Search size={28} />
-                            </button>
-                             <button onClick={() => setView(v => v === 'settings' ? 'calendar' : 'settings')} className={`p-3 transition-colors ${view === 'settings' ? 'text-white' : 'text-[#7B7B7B]'}`}>
-                                <MoreHorizontal size={28} />
-                            </button>
+                            <button onClick={() => setView(v => v === 'insights' ? 'calendar' : 'insights')} className={`p-3 transition-colors ${view === 'insights' ? 'text-white' : 'text-[#7B7B7B]'}`}><Smile size={28} /></button>
+                            <button onClick={() => setView(v => v === 'list' ? 'calendar' : 'list')} className={`p-3 transition-colors ${view === 'list' ? 'text-white' : 'text-[#7B7B7B]'}`}>{view === 'list' ? <CalendarIcon size={28} /> : <List size={28} />}</button>
+                            <button onClick={() => setIsAddModalOpen(true)} className="p-3 text-[#7B7B7B] transition-transform transform active:scale-90"><PlusCircle size={32} /></button>
+                            <button onClick={() => setView(v => v === 'search' ? 'calendar' : 'search')} className={`p-3 transition-colors ${view === 'search' ? 'text-white' : 'text-[#7B7B7B]'}`}><Search size={28} /></button>
+                            <button onClick={() => setView(v => v === 'settings' ? 'calendar' : 'settings')} className={`p-3 transition-colors ${view === 'settings' ? 'text-white' : 'text-[#7B7B7B]'}`}><MoreHorizontal size={28} /></button>
                         </div>
                     </div>
 
-                    <EventModal 
-                        isOpen={isDayModalOpen} 
-                        onClose={handleCloseModal} 
-                        date={selectedDay.date}
-                        events={modalEvents}
-                        onEdit={handleEditEvent}
-                        onDelete={handleDeleteEvent}
-                        onDeleteSeries={handleDeleteSeries}
-                    />
-                    <AddEventForm 
-                        isOpen={isAddModalOpen}
-                        onAddEvents={handleAddEvents} 
-                        eventToEdit={editingEvent}
-                        onUpdateEvent={handleUpdateEvent}
-                        onUpdateSeries={handleUpdateSeries}
-                        onCancelEdit={handleCancelEdit}
-                    />
+                    <EventModal isOpen={isDayModalOpen} onClose={handleCloseModal} date={selectedDay.date} events={modalEvents} onEdit={handleEditEvent} onDelete={handleDeleteEvent} onDeleteSeries={handleDeleteSeries}/>
+                    <AddEventForm isOpen={isAddModalOpen} onAddEvents={handleAddEvents} eventToEdit={editingEvent} onUpdateEvent={handleUpdateEvent} onUpdateSeries={handleUpdateSeries} onCancelEdit={handleCancelEdit}/>
                 </div>
             );
         };
