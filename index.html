@@ -5,25 +5,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pet Calendar</title>
 
+    <!-- ===== PWA & ICON CONFIGURATION ===== -->
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#141414">
     
+    <!-- Standard favicons for browsers -->
     <link rel="icon" type="image/png+xml" href="./android-chrome-512x512.png" />
     <link rel="icon" type="image/svg+xml" sizes="16x16" href="./favicon-16x16.svg" />
     <link rel="icon" type="image/svg+xml" sizes="32x32" href="./favicon-32x32.svg" />
 
+    <!-- Apple Touch Icon for iOS devices -->
     <link rel="apple-touch-icon" href="./apple-touch-icon.svg" />
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Pet Calendar">
 
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
+    <!-- React Libraries -->
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     
+    <!-- Babel for JSX compilation -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
+    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@100;400&display=swap" rel="stylesheet">
@@ -49,6 +56,7 @@
         const { useState, useEffect, useMemo, useRef } = React;
 
         // --- Icon Components (replaces lucide-react dependency) ---
+        // Updated CustomIcon SVG with new code provided by the user
         const CustomIcon = (props) => (
             <svg width={props.size || 24} height={props.size || 24} viewBox="0 0 348 321" fill="currentColor" xmlns="http://www.w3.org/2000/svg" {...props}>
                 <path d="M89.0205 272.969V290.565L34.9336 320.25V298.033L64.9775 281.767L34.9336 265.501V243.284L89.0205 272.969Z"/>
@@ -157,6 +165,7 @@
             const [showPassword, setShowPassword] = useState(false);
             const [error, setError] = useState('');
             
+            // --- CHANGE YOUR PASSWORD HERE ---
             const CORRECT_PASSWORD = 'mlem';
             
             const errorMessages = [
@@ -352,6 +361,7 @@
             const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
             const [showInfo, setShowInfo] = useState(false);
 
+            // Array of messages to be displayed randomly in the Info modal
             const aboutMessages = [
                 "Nothing good comes from boredom—except maybe this calendar. Too much time, too many pets. I think it's time to feed the cat.",
                 "Nothing good comes from boredom—except maybe this calendar. Too much time, too many pets. I think it’s time to consult the guinea pig.",
@@ -359,6 +369,7 @@
                 "Nothing good comes from boredom—except maybe this calendar. Too much time, too many pets. I think it's time to let the duck finish what I started."
             ];
 
+            // Select a random message when the modal is opened
             const infoMessage = useMemo(() => {
                 const randomIndex = Math.floor(Math.random() * aboutMessages.length);
                 return aboutMessages[randomIndex];
@@ -424,6 +435,7 @@
                         </div>
                     </div>
                     
+                    {/* Delete Confirmation Modal */}
                     {showDeleteConfirm && (
                          <div className="absolute inset-0 bg-black bg-opacity-80 flex items-center justify-center p-4 z-50">
                             <div className="bg-[#2a2a2a] p-6 rounded-2xl text-center w-full max-w-xs">
@@ -437,6 +449,7 @@
                         </div>
                     )}
 
+                    {/* Info Modal */}
                     {showInfo && (
                          <div className="absolute inset-0 bg-black bg-opacity-80 flex items-center justify-center p-4 z-50" onClick={() => setShowInfo(false)}>
                             <div className="bg-[#2a2a2a] p-6 rounded-2xl text-center w-full max-w-xs">
@@ -638,7 +651,7 @@
             );
         };
 
-        const AddEventForm = ({ isOpen, onAddEvents, eventToEdit, onUpdateEvent, onUpdateSeries, onCancelEdit, isLocalOrPreview }) => {
+        const AddEventForm = ({ isOpen, onAddEvents, eventToEdit, onUpdateEvent, onUpdateSeries, onCancelEdit }) => {
             const [name, setName] = useState('');
             const [type, setType] = useState('walk');
             const [date, setDate] = useState(formatDateToYYYYMMDD(new Date()));
@@ -655,17 +668,13 @@
             const [updateScope, setUpdateScope] = useState('single');
             const isEditMode = !!eventToEdit;
 
+            // --- Autocomplete state and handler ---
             const [petNameSuggestions, setPetNameSuggestions] = useState([]);
             const inputRef = useRef(null);
             
             const handleNameChange = async (e) => {
                 const newName = e.target.value;
                 setName(newName);
-
-                if (isLocalOrPreview) {
-                    setPetNameSuggestions([]);
-                    return;
-                }
                 
                 if (newName.length > 1) {
                     try {
@@ -692,12 +701,11 @@
 
             useEffect(() => {
                 if (eventToEdit) {
-                    const start = new Date(eventToEdit.dtstart);
-                    const end = new Date(eventToEdit.dtend);
-
                     setName(eventToEdit.summary);
                     setType(eventToEdit.type);
                     setDescription(eventToEdit.description || '');
+                    const start = new Date(eventToEdit.dtstart);
+                    const end = new Date(eventToEdit.dtend);
                     
                     if (eventToEdit.type === 'boarding') {
                         setStartDate(formatDateToYYYYMMDD(start));
@@ -705,7 +713,11 @@
                         setEndDate(formatDateToYYYYMMDD(end));
                         setPickUpTime(`${end.getHours().toString().padStart(2, '0')}:${end.getMinutes().toString().padStart(2, '0')}`);
                     } else {
-                        setDate(formatDateToYYYYMMDD(start));
+                        if (eventToEdit.is_recurring && eventToEdit.series_start_date) {
+                            setDate(eventToEdit.series_start_date);
+                        } else {
+                            setDate(formatDateToYYYYMMDD(start));
+                        }
                         setTime(`${start.getHours().toString().padStart(2, '0')}:${start.getMinutes().toString().padStart(2, '0')}`);
                         const durationMinutes = (end - start) / 60000;
                         setDuration(durationMinutes);
@@ -715,14 +727,13 @@
                     setRecurringDays(eventToEdit.recurring_days || { 0: false, 1: false, 2: false, 3: false, 4: false, 5: false, 6: false });
                     
                     if (eventToEdit.is_recurring && eventToEdit.recur_until) {
-                        const recurUntilDate = new Date(eventToEdit.recur_until);
-                        const timezoneCorrectedDate = new Date(recurUntilDate.getUTCFullYear(), recurUntilDate.getUTCMonth(), recurUntilDate.getUTCDate());
-                        setRecurUntil(formatDateToYYYYMMDD(timezoneCorrectedDate));
+                        setRecurUntil(eventToEdit.recur_until);
                     } else {
                         const defaultRecurDate = new Date();
                         defaultRecurDate.setDate(defaultRecurDate.getDate() + 7);
                         setRecurUntil(formatDateToYYYYMMDD(defaultRecurDate));
                     }
+
                 } else { 
                     resetForm(); 
                 }
@@ -741,51 +752,28 @@
             const resetForm = () => { setName(''); setDescription(''); setIsRecurring(false); setRecurringDays({ 0: false, 1: false, 2: false, 3: false, 4: false, 5: false, 6: false }); onCancelEdit(); setPetNameSuggestions([]); }
 
             const handleSubmit = (e) => {
-                e.preventDefault();
-                if (!name) return;
-
+                e.preventDefault(); if (!name) return;
                 if (isEditMode) {
                     if (eventToEdit.is_recurring && updateScope === 'series') {
-                        const updatedSeriesData = { 
-                            summary: name, 
-                            time, 
-                            duration, 
-                            recurring_days: recurringDays, 
-                            recur_until: recurUntil, 
-                            description,
-                            series_start_date: eventToEdit.series_start_date,
-                            type: eventToEdit.type
-                        };
-                        onUpdateSeries(eventToEdit, updatedSeriesData);
-                        resetForm();
-                        return;
-                    }
-                    
-                    let updatedEvent = { ...eventToEdit, summary: name, type, description };
-                    
-                    if (type === 'boarding') {
-                        updatedEvent.dtstart = parseDateTime(startDate, dropOffTime).toISOString();
-                        updatedEvent.dtend = parseDateTime(endDate, pickUpTime).toISOString();
+                        const updatedSeriesData = { name, time, duration, recurring_days: recurringDays, recur_until: recurUntil, description };
+                        onUpdateSeries(eventToEdit, { ...updatedSeriesData, type: eventToEdit.type });
                     } else {
-                        const eventStart = parseDateTime(date, time);
-                        const finalDuration = type === 'meet-and-greet' ? 30 : duration;
-                        const eventEnd = new Date(eventStart.getTime() + finalDuration * 60000);
-                        updatedEvent.dtstart = eventStart.toISOString();
-                        updatedEvent.dtend = eventEnd.toISOString();
-                        
-                        if (eventToEdit.is_recurring) {
-                            updatedEvent.is_recurring = false;
-                            delete updatedEvent.series_id;
-                            delete updatedEvent.recurring_days;
-                            delete updatedEvent.recur_until;
-                            delete updatedEvent.series_start_date;
+                        let updatedEvent = { ...eventToEdit, summary: name, type, description };
+                        if (type === 'boarding') {
+                            updatedEvent.dtstart = parseDateTime(startDate, dropOffTime).toISOString();
+                            updatedEvent.dtend = parseDateTime(endDate, pickUpTime).toISOString();
+                        } else {
+                            const eventStart = parseDateTime(date, time);
+                            const finalDuration = type === 'meet-and-greet' ? 30 : duration;
+                            const eventEnd = new Date(eventStart.getTime() + finalDuration * 60000);
+                            updatedEvent.dtstart = eventStart.toISOString();
+                            updatedEvent.dtend = eventEnd.toISOString();
+                            updatedEvent.is_recurring = false; delete updatedEvent.series_id; delete updatedEvent.recurring_days;
                         }
+                        onUpdateEvent(updatedEvent);
                     }
-                    onUpdateEvent(updatedEvent);
-                    resetForm();
                     return;
                 }
-
                 let newEvents = [];
                 if (type === 'boarding') {
                     const start = parseDateTime(startDate, dropOffTime);
@@ -795,7 +783,7 @@
                     let selectedDays = Object.keys(recurringDays).filter(day => recurringDays[day]).map(Number);
                     const hasSelectedDays = selectedDays.length > 0;
                     if (!hasSelectedDays) {
-                        selectedDays = [0, 1, 2, 3, 4, 5, 6];
+                        selectedDays = [0, 1, 2, 3, 4, 5, 6]; // Default to daily
                     }
                     const series_start_date = date;
                     let currentDate = parseDateTime(date);
@@ -804,8 +792,7 @@
                     while (currentDate <= untilDate) {
                         if (selectedDays.includes(currentDate.getDay())) {
                             const eventStart = parseDateTime(formatDateToYYYYMMDD(currentDate), time);
-                            const finalDuration = type === 'meet-and-greet' ? 30 : duration;
-                            const eventEnd = new Date(eventStart.getTime() + finalDuration * 60000);
+                            const eventEnd = new Date(eventStart.getTime() + duration * 60000);
                             newEvents.push({ summary: name, dtstart: eventStart.toISOString(), dtend: eventEnd.toISOString(), type, description, uid: `manual-${crypto.randomUUID()}`, is_recurring: true, recurring_days: hasSelectedDays ? recurringDays : null, series_id, recur_until: recurUntil, series_start_date });
                         }
                         currentDate.setDate(currentDate.getDate() + 1);
@@ -851,9 +838,10 @@
                                     background-color: rgba(255, 255, 255, 0.05);
                                 }
                                 select option {
-                                    background: #1F1F1F;
+                                    background: #1F1F1F; /* Match modal background color for a dark theme */
                                     color: white;
                                 }
+                                /* Add new styles for the suggestions list */
                                 .autocomplete-container {
                                     position: relative;
                                 }
@@ -969,7 +957,7 @@
 
         const App = () => {
             const [isAuthenticated, setIsAuthenticated] = useState(false);
-            const [currentDate, setCurrentDate] = useState(new Date());
+            const [currentDate, setCurrentDate] = useState(new Date()); // Start view in current month
             const [events, setEvents] = useState([]);
             const [isLoading, setIsLoading] = useState(true);
             const [error, setError] = useState(null);
@@ -977,27 +965,32 @@
             const [isDayModalOpen, setIsDayModalOpen] = useState(false);
             const [isAddModalOpen, setIsAddModalOpen] = useState(false);
             const [editingEvent, setEditingEvent] = useState(null);
-            const [view, setView] = useState('calendar');
+            const [view, setView] = useState('calendar'); // 'calendar', 'list', 'search', 'insights', 'settings'
             const [searchQuery, setSearchQuery] = useState('');
             const [selectedService, setSelectedService] = useState(null);
             const [hiddenEventTypes, setHiddenEventTypes] = useState([]);
-            const [isSorted, setIsSorted] = useState(false);
+            const [isSorted, setIsSorted] = useState(false); // State for sorting on the Insights page
             const contentRef = useRef(null);
             const todayDateString = new Date().toDateString();
             
+            // The base URL for your Netlify Functions
             const API_ENDPOINT = '/.netlify/functions/events';
+            // A simple check to see if we're in a local/preview environment vs deployed on Netlify
             const isLocalOrPreview = !window.location.hostname || window.location.hostname === 'localhost';
 
+            // Check for authentication on initial load
             useEffect(() => {
                 if (sessionStorage.getItem('pet-calendar-auth') === 'true') {
                     setIsAuthenticated(true);
                 }
             }, []);
 
+            // Function to fetch all events from the backend
             const fetchEvents = async () => {
                 setIsLoading(true);
                 setError(null);
 
+                // If in a local preview, use mock data to avoid fetch errors
                 if (isLocalOrPreview) {
                     console.log("Running in local/preview mode. Using mock data.");
                     const year = 2025;
@@ -1005,7 +998,33 @@
                     const july = 6;
                     const august = 7;
                     const mockData = [
-                        // Mock data...
+                        // May Events
+                        { uid: 'mock-1', summary: "Milo", dtstart: new Date(year, may, 5, 10, 0, 0), dtend: new Date(year, may, 5, 10, 30, 0), type: 'walk' },
+                        { uid: 'mock-2', summary: "Daisy", dtstart: new Date(year, may, 10, 12, 0, 0), dtend: new Date(year, may, 10, 12, 30, 0), type: 'drop-in' },
+                        { uid: 'mock-3', summary: "Rocky", dtstart: new Date(year, may, 15, 9, 0, 0), dtend: new Date(year, may, 18, 17, 0, 0), type: 'boarding' },
+                        { uid: 'mock-4', summary: "Bella", dtstart: new Date(year, may, 20, 16, 0, 0), dtend: new Date(year, may, 20, 17, 0, 0), type: 'walk' },
+                        { uid: 'mock-5', summary: "Charlie", dtstart: new Date(year, may, 25, 11, 0, 0), dtend: new Date(year, may, 25, 11, 30, 0), type: 'meet-and-greet' },
+                        { uid: 'mock-6', summary: "Lucy", dtstart: new Date(year, may, 30, 14, 0, 0), dtend: new Date(year, may, 30, 14, 30, 0), type: 'drop-in' },
+
+                        // July Events
+                        { uid: 'mock-7', summary: "Max", dtstart: new Date(year, july, 1, 8, 0, 0), dtend: new Date(year, july, 1, 8, 30, 0), type: 'walk' },
+                        { uid: 'mock-8', summary: "Buddy", dtstart: new Date(year, july, 5, 13, 0, 0), dtend: new Date(year, july, 5, 13, 30, 0), type: 'drop-in' },
+                        { uid: 'mock-9', summary: "Sadie", dtstart: new Date(year, july, 10, 18, 0, 0), dtend: new Date(year, july, 15, 10, 0, 0), type: 'boarding' },
+                        { uid: 'mock-10', summary: "Cooper", dtstart: new Date(year, july, 18, 9, 30, 0), dtend: new Date(year, july, 18, 10, 0, 0), type: 'walk' },
+                        { uid: 'mock-11', summary: "Zoe", dtstart: new Date(year, july, 22, 17, 0, 0), dtend: new Date(year, july, 22, 17, 30, 0), type: 'meet-and-greet' },
+                        { uid: 'mock-12', summary: "Toby", dtstart: new Date(year, july, 28, 11, 30, 0), dtend: new Date(year, july, 28, 12, 0, 0), type: 'drop-in' },
+                        { uid: 'mock-13', summary: "Molly", dtstart: new Date(year, july, 30, 7, 0, 0), dtend: new Date(year, july, 30, 8, 0, 0), type: 'walk' },
+                        { uid: 'mock-14', summary: "Lucy", dtstart: new Date(year, july, 2, 9, 0, 0), dtend: new Date(year, july, 2, 9, 30, 0), type: 'walk' },
+                        { uid: 'mock-15', summary: "Luna", dtstart: new Date(year, july, 26, 9, 0, 0), dtend: new Date(year, july, 28, 17, 0, 0), type: 'boarding' },
+
+                        // August Events
+                        { uid: 'mock-16', summary: "Oscar", dtstart: new Date(year, august, 2, 15, 0, 0), dtend: new Date(year, august, 2, 15, 30, 0), type: 'walk' },
+                        { uid: 'mock-17', summary: "Ruby", dtstart: new Date(year, august, 6, 10, 0, 0), dtend: new Date(year, august, 6, 10, 30, 0), type: 'drop-in' },
+                        { uid: 'mock-18', summary: "Leo", dtstart: new Date(year, august, 12, 8, 0, 0), dtend: new Date(year, august, 16, 19, 0, 0), type: 'boarding' },
+                        { uid: 'mock-19', summary: "Jack", dtstart: new Date(year, august, 19, 16, 30, 0), dtend: new Date(year, august, 19, 17, 0, 0), type: 'walk' },
+                        { uid: 'mock-20', summary: "Penny", dtstart: new Date(year, august, 23, 18, 0, 0), dtend: new Date(year, august, 23, 18, 30, 0), type: 'meet-and-greet' },
+                        { uid: 'mock-21', summary: "Gus", dtstart: new Date(year, august, 27, 9, 0, 0), dtend: new Date(year, august, 27, 9, 30, 0), type: 'drop-in' },
+                        { uid: 'mock-22', summary: "Nala", dtstart: new Date(year, august, 31, 12, 0, 0), dtend: new Date(year, august, 31, 13, 0, 0), type: 'walk' },
                     ];
                     setEvents(mockData);
                     setIsLoading(false);
@@ -1018,6 +1037,7 @@
                         throw new Error(`HTTP error! status: ${response.status}`);
                     }
                     const data = await response.json();
+                    // Convert date strings from backend into Date objects
                     const processedEvents = data.map(event => ({
                         ...event,
                         dtstart: new Date(event.dtstart),
@@ -1032,12 +1052,14 @@
                 }
             };
 
+            // Fetch events only when authenticated
             useEffect(() => {
                 if (isAuthenticated) {
                     fetchEvents();
                 }
             }, [isAuthenticated]);
             
+            // Effect to scroll to today's date when switching to list view
             useEffect(() => {
                 if (view === 'list') {
                     setTimeout(() => {
@@ -1045,7 +1067,7 @@
                         if (todayElement) {
                             todayElement.scrollIntoView({ behavior: 'auto', block: 'start' });
                         }
-                    }, 100);
+                    }, 100); // Small delay to ensure DOM is updated
                 }
             }, [view]);
 
@@ -1057,7 +1079,7 @@
             const handleTodayClick = () => {
                 if (view === 'calendar') {
                     setCurrentDate(new Date());
-                } else {
+                } else { // For 'list' or 'search' view
                     const todayElement = document.getElementById('today-marker');
                     if (todayElement) {
                         todayElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1080,7 +1102,7 @@
                         body: JSON.stringify(newEvents),
                     });
                     if (!response.ok) throw new Error('Failed to add events');
-                    await fetchEvents();
+                    await fetchEvents(); // Refetch all events to get the new ones with DB-generated IDs
                     setIsAddModalOpen(false);
                 } catch (e) {
                     console.error("Error adding events:", e);
@@ -1113,7 +1135,7 @@
                         body: JSON.stringify(updatedEvent),
                     });
                     if (!response.ok) throw new Error('Failed to update event');
-                    await fetchEvents();
+                    await fetchEvents(); // Refetch to update the UI
                     setEditingEvent(null);
                     setIsAddModalOpen(false);
                 } catch (e) {
@@ -1133,11 +1155,11 @@
                         method: 'DELETE',
                     });
                     if (!response.ok) throw new Error('Failed to delete event');
-                    setEvents(events.filter(e => e.uid !== uidToDelete));
+                    setEvents(events.filter(e => e.uid !== uidToDelete)); // Optimistic update
                 } catch (e) {
                     console.error("Error deleting event:", e);
                     setError("Failed to delete event.");
-                    fetchEvents();
+                    fetchEvents(); // Refetch to correct UI if delete failed
                 }
             };
 
@@ -1152,48 +1174,35 @@
                         method: 'DELETE',
                     });
                      if (!response.ok) throw new Error('Failed to delete series');
-                    setEvents(events.filter(e => e.series_id !== seriesIdToDelete));
+                    setEvents(events.filter(e => e.series_id !== seriesIdToDelete)); // Optimistic update
                 } catch (e) {
                     console.error("Error deleting series:", e);
                     setError("Failed to delete event series.");
-                    fetchEvents();
+                    fetchEvents(); // Refetch to correct UI
                 }
             };
 
             const handleUpdateSeries = async (editedEvent, updatedData) => {
-                if (isLocalOrPreview) {
-                    // ... local logic from previous steps
-                    return;
-                }
-
-                try {
-                    const url = `${API_ENDPOINT}?seriesId=${editedEvent.series_id}`;
-                    const body = updatedData;
-
-                    const response = await fetch(url, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(body),
-                    });
-
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        console.error("Server responded with an error:", response.status, errorText);
-                        throw new Error(`Failed to update series. Server status: ${response.status}`);
-                    }
-                    
-                    setIsLoading(true);
-                    setTimeout(() => {
-                        fetchEvents();
-                    }, 1000);
-
+                 if (isLocalOrPreview) {
+                    console.log("Local mode: Updating series is complex. Refetching mock data for simplicity.");
+                    fetchEvents(); // Just reset to mock data in local mode
                     setEditingEvent(null);
                     setIsAddModalOpen(false);
-
+                    return;
+                }
+                 try {
+                    const response = await fetch(`${API_ENDPOINT}?seriesId=${editedEvent.series_id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ...updatedData, type: editedEvent.type }),
+                    });
+                    if (!response.ok) throw new Error('Failed to update series');
+                    await fetchEvents();
+                    setEditingEvent(null);
+                    setIsAddModalOpen(false);
                 } catch (e) {
                     console.error("Error updating series:", e);
                     setError("Failed to update event series.");
-                    setIsLoading(false);
                 }
             };
             
@@ -1208,11 +1217,11 @@
                         method: 'DELETE',
                     });
                     if (!response.ok) throw new Error('Failed to delete all events');
-                    setEvents([]);
+                    setEvents([]); // Optimistic update
                 } catch (e) {
                     console.error("Error deleting all events:", e);
                     setError("Failed to delete all events.");
-                    fetchEvents();
+                    fetchEvents(); // Refetch to correct UI
                 }
             };
             
@@ -1234,7 +1243,8 @@
                 const dayEvents = events.filter(event => {
                     const eventStart = new Date(event.dtstart); eventStart.setHours(0,0,0,0);
                     const eventEnd = new Date(event.dtend);
-                    if (!isSameDay(new Date(event.dtstart), new Date(event.dtend)) && eventEnd.getHours() === 0 && eventEnd.getMinutes() === 0) {
+                    const isSameStartEndDay = isSameDay(new Date(event.dtstart), new Date(event.dtend));
+                    if (!isSameStartEndDay && eventEnd.getHours() === 0 && eventEnd.getMinutes() === 0) {
                         eventEnd.setDate(eventEnd.getDate() - 1);
                     }
                     eventEnd.setHours(23,59,59,999);
@@ -1257,8 +1267,12 @@
             const sortedEvents = useMemo(() => [...events].sort((a,b) => new Date(a.dtstart) - new Date(b.dtstart)), [events]);
 
             const filteredEvents = useMemo(() => {
-                if (!searchQuery && !selectedService) return [];
+                if (!searchQuery && !selectedService) {
+                    return [];
+                }
+
                 let eventsToFilter = sortedEvents;
+
                 if (searchQuery) {
                     const lowerCaseQuery = searchQuery.toLowerCase();
                     return eventsToFilter.filter(event => 
@@ -1266,9 +1280,11 @@
                         event.type.replace('-', ' ').toLowerCase().includes(lowerCaseQuery)
                     );
                 }
+
                 if (selectedService) {
                     return eventsToFilter.filter(event => event.type === selectedService);
                 }
+                
                 return [];
             }, [searchQuery, selectedService, sortedEvents]);
 
@@ -1283,7 +1299,9 @@
                     let currentDate = new Date(startDate);
                     while(currentDate <= endDate) {
                         const dateKey = currentDate.toDateString();
-                        if(!groups[dateKey]) groups[dateKey] = [];
+                        if(!groups[dateKey]) {
+                            groups[dateKey] = [];
+                        }
                         groups[dateKey].push(event);
                         currentDate.setDate(currentDate.getDate() + 1);
                     }
@@ -1301,12 +1319,12 @@
 
             const handleSearchInputChange = (e) => {
                 setSearchQuery(e.target.value);
-                setSelectedService(null);
+                setSelectedService(null); // Clear service filter when typing
             };
 
             const handleServiceSelect = (service) => {
-                setSelectedService(prev => prev === service ? null : service);
-                setSearchQuery('');
+                setSelectedService(prev => prev === service ? null : service); // Toggle selection
+                setSearchQuery(''); // Clear text search when selecting a service
             };
 
             const isSearchActive = searchQuery.length > 0 || selectedService !== null;
@@ -1320,6 +1338,7 @@
                 <div className="bg-[#141414] min-h-screen font-sans flex justify-center">
                     <div className="w-full max-w-md flex flex-col h-screen bg-[#141414] overflow-hidden">
                         
+                        {/* Header */}
                         <div className="flex-shrink-0">
                             <CalendarHeader 
                                 currentDate={currentDate} 
@@ -1332,6 +1351,7 @@
                             />
                         </div>
                         
+                        {/* Main Content Area (Stretches to fill space) */}
                         <div className="flex-grow flex flex-col overflow-y-auto" ref={contentRef}>
                            {isLoading && <div className="flex-grow flex items-center justify-center text-white">Loading Calendar...</div>}
                            {error && <div className="flex-grow flex items-center justify-center text-red-400 p-4 text-center">{error}</div>}
@@ -1413,6 +1433,7 @@
                            )}
                         </div>
 
+                        {/* Footer Navigation */}
                         <div className="flex-shrink-0 border-t border-white/10 flex justify-around items-center p-2">
                             <button onClick={() => setView(v => v === 'insights' ? 'calendar' : 'insights')} className={`p-3 transition-colors ${view === 'insights' ? 'text-white' : 'text-[#7B7B7B]'}`}>
                                 <Smile size={28} />
@@ -1432,6 +1453,7 @@
                         </div>
                     </div>
 
+                    {/* Modals remain outside the main layout flow */}
                     <EventModal 
                         isOpen={isDayModalOpen} 
                         onClose={handleCloseModal} 
@@ -1448,7 +1470,6 @@
                         onUpdateEvent={handleUpdateEvent}
                         onUpdateSeries={handleUpdateSeries}
                         onCancelEdit={handleCancelEdit}
-                        isLocalOrPreview={isLocalOrPreview}
                     />
                 </div>
             );
