@@ -20,20 +20,18 @@ const formatDateToYYYYMMDD = (date) => {
 
 /**
  * Parses a date string and optional time string into a Date object.
- * FIX: This function is now robust and can handle both simple "YYYY-MM-DD" strings
- * and full ISO timestamp strings like "YYYY-MM-DDTHH:mm:ss.sssZ".
+ * This function can handle both "YYYY-MM-DD" and full ISO timestamp strings.
  * @param {string} dateString The date string to parse.
  * @param {string} [timeString='00:00'] The time string.
  * @returns {Date} The parsed Date object.
  */
 const parseDateTime = (dateString, timeString = '00:00') => {
-    // Take only the date part of the string, ignoring the time and timezone if present.
+    // Take only the date part of the string, ignoring time/timezone if present.
     const cleanDateString = dateString.split('T')[0];
     
     const [year, month, day] = cleanDateString.split('-').map(Number);
     const [hours, minutes] = timeString.split(':').map(Number);
     
-    // This check prevents crashes if the date format is completely wrong.
     if (isNaN(year) || isNaN(month) || isNaN(day)) {
         return new Date(NaN); // Return an invalid date
     }
@@ -70,17 +68,10 @@ exports.handler = async function(event, context) {
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);
           `;
           const values = [
-            ev.uid,
-            ev.summary,
-            ev.type,
-            ev.dtstart,
-            ev.dtend,
-            ev.description || null,
-            ev.is_recurring || false,
+            ev.uid, ev.summary, ev.type, ev.dtstart, ev.dtend,
+            ev.description || null, ev.is_recurring || false,
             ev.recurring_days ? JSON.stringify(ev.recurring_days) : null,
-            ev.series_id || null,
-            ev.recur_until || null,
-            ev.series_start_date || null
+            ev.series_id || null, ev.recur_until || null, ev.series_start_date || null
           ];
           await client.query(query, values);
         }
@@ -101,14 +92,17 @@ exports.handler = async function(event, context) {
     if (httpMethod === 'PUT') {
         const eventData = JSON.parse(event.body);
         
+        // This block handles updates for an entire recurring series.
         if (params.seriesId) {
             const client = await pool.connect();
             try {
                 await client.query('BEGIN');
 
+                // 1. Delete all old events in the series.
                 await client.query('DELETE FROM events WHERE series_id = $1;', [params.seriesId]);
 
-                const { summary, time, duration, recurring_days, recur_until, series_start_date, type } = eventData;
+                // 2. Regenerate new events with the updated info.
+                const { summary, time, duration, recurring_days, recur_until, series_start_date, type, description } = eventData;
                 let selectedDays = Object.keys(recurring_days).filter(day => recurring_days[day]).map(Number);
                 if (selectedDays.length === 0) {
                     selectedDays = [0, 1, 2, 3, 4, 5, 6];
@@ -151,6 +145,7 @@ exports.handler = async function(event, context) {
             }
         }
         
+        // This block handles updates for single events.
         if (params.uid) {
             const query = `
                 UPDATE events 
