@@ -5,32 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pet Calendar</title>
 
-    <!-- ===== PWA & ICON CONFIGURATION ===== -->
     <link rel="manifest" href="./manifest.json">
     <meta name="theme-color" content="#141414">
     
-    <!-- Standard favicons for browsers -->
     <link rel="icon" type="image/png+xml" href="./android-chrome-512x512.png" />
     <link rel="icon" type="image/svg+xml" sizes="16x16" href="./favicon-16x16.svg" />
     <link rel="icon" type="image/svg+xml" sizes="32x32" href="./favicon-32x32.svg" />
 
-    <!-- Apple Touch Icon for iOS devices -->
     <link rel="apple-touch-icon" href="./apple-touch-icon.svg" />
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Pet Calendar">
 
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- React Libraries -->
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     
-    <!-- Babel for JSX compilation -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@100;400&display=swap" rel="stylesheet">
@@ -704,6 +697,10 @@
                     setName(eventToEdit.summary);
                     setType(eventToEdit.type);
                     setDescription(eventToEdit.description || '');
+                    
+                    setIsRecurring(eventToEdit.is_recurring || false);
+                    setRecurringDays(eventToEdit.recurring_days || { 0: false, 1: false, 2: false, 3: false, 4: false, 5: false, 6: false });
+
                     const start = new Date(eventToEdit.dtstart);
                     const end = new Date(eventToEdit.dtend);
                     
@@ -713,8 +710,10 @@
                         setEndDate(formatDateToYYYYMMDD(end));
                         setPickUpTime(`${end.getHours().toString().padStart(2, '0')}:${end.getMinutes().toString().padStart(2, '0')}`);
                     } else {
+                        // **MODIFIED BLOCK**
                         if (eventToEdit.is_recurring && eventToEdit.series_start_date) {
-                            setDate(eventToEdit.series_start_date);
+                            // FIX: Slice the date string to prevent timezone issues when loading into the form
+                            setDate(eventToEdit.series_start_date.substring(0, 10));
                         } else {
                             setDate(formatDateToYYYYMMDD(start));
                         }
@@ -723,11 +722,9 @@
                         setDuration(durationMinutes);
                     }
 
-                    setIsRecurring(eventToEdit.is_recurring || false);
-                    setRecurringDays(eventToEdit.recurring_days || { 0: false, 1: false, 2: false, 3: false, 4: false, 5: false, 6: false });
-                    
                     if (eventToEdit.is_recurring && eventToEdit.recur_until) {
-                        setRecurUntil(eventToEdit.recur_until);
+                        // FIX: Slice the date string to prevent timezone issues when loading into the form
+                        setRecurUntil(eventToEdit.recur_until.substring(0, 10));
                     } else {
                         const defaultRecurDate = new Date();
                         defaultRecurDate.setDate(defaultRecurDate.getDate() + 7);
@@ -753,9 +750,20 @@
 
             const handleSubmit = (e) => {
                 e.preventDefault(); if (!name) return;
+                
                 if (isEditMode) {
                     if (eventToEdit.is_recurring && updateScope === 'series') {
-                        const updatedSeriesData = { name, time, duration, recurring_days: recurringDays, recur_until: recurUntil, description };
+                        // **MODIFIED BLOCK**
+                        const updatedSeriesData = {
+                            summary: name,
+                            time,
+                            duration,
+                            recurring_days: recurringDays,
+                            recur_until: recurUntil,
+                            description,
+                            // FIX: Add the series_start_date to the payload for the backend
+                            series_start_date: date 
+                        };
                         onUpdateSeries(eventToEdit, { ...updatedSeriesData, type: eventToEdit.type });
                     } else {
                         let updatedEvent = { ...eventToEdit, summary: name, type, description };
@@ -772,8 +780,9 @@
                         }
                         onUpdateEvent(updatedEvent);
                     }
-                    return;
+                    return; // Exit after handling update
                 }
+
                 let newEvents = [];
                 if (type === 'boarding') {
                     const start = parseDateTime(startDate, dropOffTime);
@@ -1194,9 +1203,12 @@
                     const response = await fetch(`${API_ENDPOINT}?seriesId=${editedEvent.series_id}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ ...updatedData, type: editedEvent.type }),
+                        body: JSON.stringify(updatedData),
                     });
-                    if (!response.ok) throw new Error('Failed to update series');
+                    if (!response.ok) {
+                        const err = await response.json();
+                        throw new Error(err.error || 'Failed to update series');
+                    }
                     await fetchEvents();
                     setEditingEvent(null);
                     setIsAddModalOpen(false);
