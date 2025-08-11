@@ -710,9 +710,7 @@
                         setEndDate(formatDateToYYYYMMDD(end));
                         setPickUpTime(`${end.getHours().toString().padStart(2, '0')}:${end.getMinutes().toString().padStart(2, '0')}`);
                     } else {
-                        // **MODIFIED BLOCK**
                         if (eventToEdit.is_recurring && eventToEdit.series_start_date) {
-                            // FIX: Slice the date string to prevent timezone issues when loading into the form
                             setDate(eventToEdit.series_start_date.substring(0, 10));
                         } else {
                             setDate(formatDateToYYYYMMDD(start));
@@ -723,7 +721,6 @@
                     }
 
                     if (eventToEdit.is_recurring && eventToEdit.recur_until) {
-                        // FIX: Slice the date string to prevent timezone issues when loading into the form
                         setRecurUntil(eventToEdit.recur_until.substring(0, 10));
                     } else {
                         const defaultRecurDate = new Date();
@@ -753,7 +750,6 @@
                 
                 if (isEditMode) {
                     if (eventToEdit.is_recurring && updateScope === 'series') {
-                        // **MODIFIED BLOCK**
                         const updatedSeriesData = {
                             summary: name,
                             time,
@@ -761,7 +757,6 @@
                             recurring_days: recurringDays,
                             recur_until: recurUntil,
                             description,
-                            // FIX: Add the series_start_date to the payload for the backend
                             series_start_date: date 
                         };
                         onUpdateSeries(eventToEdit, { ...updatedSeriesData, type: eventToEdit.type });
@@ -780,7 +775,7 @@
                         }
                         onUpdateEvent(updatedEvent);
                     }
-                    return; // Exit after handling update
+                    return;
                 }
 
                 let newEvents = [];
@@ -1041,7 +1036,9 @@
                 }
 
                 try {
-                    const response = await fetch(API_ENDPOINT);
+                    // **MODIFIED LINE**
+                    const response = await fetch(API_ENDPOINT, { cache: 'no-cache' });
+                    
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
                     }
